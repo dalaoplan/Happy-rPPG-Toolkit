@@ -11,11 +11,11 @@ from model_selector import select_loss
 from post_process import calculate_metric_batch_video, calculate_metric_per_video ,calculate_metrics
 from visual import plot_wave_psd, plot_blandaltman
 
-def read_split_data(dataset_name: str = "UBFCrPPG", Train_len: int = 160, seed: int = 42, scene:str = 'raw'):
+def read_split_data(dataset_name: str = "UBFCrPPG", Train_len: int = 160, seed: int = 42, scene:str = 'Raw', tag: str = 'intra'):
     random.seed(seed)
     np.random.seed(seed)
 
-    data_root = f"E:\\datasets_h5\\{dataset_name}"
+    data_root = f"D:\\Dataset\\{dataset_name}"
     assert os.path.exists(data_root), f"dataset root: {data_root} does not exist."
 
     # 加载并排序文件路径
@@ -28,8 +28,11 @@ def read_split_data(dataset_name: str = "UBFCrPPG", Train_len: int = 160, seed: 
     elif dataset_name == 'MMPD':
         files = sorted([f for f in os.listdir(data_root) if f.endswith(".h5")],
                        key=lambda x: int(x.split("_")[0][1:]))
-    elif dataset_name == 'DLCN':
+    elif dataset_name == 'PURE':
+        files = sorted([f for f in os.listdir(data_root) if f.endswith(".h5")],
+                       key=lambda x: (int(x.split("-")[0]), int(x.split("-")[1].split(".")[0])))
 
+    elif dataset_name == 'DLCN':
         # 映射模4结果到场景名
         scene_mapping = {
             1: 'FIFP',
@@ -78,47 +81,65 @@ def read_split_data(dataset_name: str = "UBFCrPPG", Train_len: int = 160, seed: 
         elif scene == 'VIVP':
             files = scene_data[scene]
             print(f"\n光强变化且位置变化: {len(files)}")
+        elif scene == 'Raw':
+            files = [f for f in os.listdir(data_root) if f.endswith(".h5")]
+            print(f"\n所有数据: {len(files)}")
+        else:
+            raise ValueError(f"Unknown scene: {scene}")
 
         files = sorted(files,
             key=lambda x: (int(x.split("_")[0][1:]), int(x.split("_")[1].split(".")[0]))
         )
 
     file_paths = [os.path.join(data_root, f) for f in files]
+    print(f'all of num: {len(file_paths)}')
 
-    # 设置fps和video_len
-    fs, video_len = get_dataset_info(dataset_name)
-
-    num_repeat = np.round(video_len / (Train_len / fs)).astype(int)
-
-    # 5折划分
-    kf = KFold(n_splits=5, shuffle=True, random_state=seed)
-    splits = list(kf.split(file_paths))
-
-    all_folds = []
-    os.makedirs("./config/", exist_ok=True)
-
-    for fold_idx, (train_idx, val_idx) in enumerate(splits):
-        train_set = [file_paths[i] for i in train_idx]
-        val_set = [file_paths[i] for i in val_idx]
-
-        train_set_expanded = train_set * num_repeat
-
-        all_folds.append((train_set_expanded, val_set))
-
-        # 保存配置文件
-        json_path = f"./config/{dataset_name}_5fold_fold{fold_idx}_scene{scene}_seed{seed}.json"
+    if tag == 'cross':
+        json_path = f"./dataconfig/{tag}_{dataset_name}_scene{scene}_seed{seed}.json"
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump({
-                "fold_index": fold_idx,
-                "train_len": len(train_set),
-                "train": train_set,
-                "val_len": len(val_set),
-                "val": val_set
+                "val_len": len(file_paths),
+                "val": file_paths
             }, f, indent=4)
+        print(f'val num: {len(file_paths)}')
+        return file_paths
+    elif tag == 'intra':
 
-        # print(f"Fold {fold_idx + 1}/5 | Train: {len(train_set)} | Val: {len(val_set)} | Repeat: {num_repeat}")
+        # 设置fps和video_len
+        fs, video_len = get_dataset_info(dataset_name)
 
-    return all_folds
+        num_repeat = np.round(video_len / (Train_len / fs)).astype(int)
+
+        # 5折划分
+        kf = KFold(n_splits=5, shuffle=True, random_state=seed)
+        splits = list(kf.split(file_paths))
+
+        all_folds = []
+        os.makedirs("./dataconfig/", exist_ok=True)
+
+        for fold_idx, (train_idx, val_idx) in enumerate(splits):
+            train_set = [file_paths[i] for i in train_idx]
+            val_set = [file_paths[i] for i in val_idx]
+
+            train_set_expanded = train_set * num_repeat
+
+            all_folds.append((train_set_expanded, val_set))
+
+            # 保存配置文件
+            json_path = f"./dataconfig/{tag}_{dataset_name}_5fold_fold{fold_idx}_scene{scene}_seed{seed}.json"
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "fold_index": fold_idx,
+                    "train_len": len(train_set),
+                    "train": train_set,
+                    "val_len": len(val_set),
+                    "val": val_set
+                }, f, indent=4)
+        print(f'train num: {len(train_set)}, val num: {len(val_set)}')
+        return all_folds
+    else:
+        raise ValueError(f"tag only intra or cross, now tag:{tag}")
+
 
 def get_dataset_info(dataset_name):
     """
@@ -166,6 +187,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, fs, loss_name)
     optimizer.zero_grad()
 
     sample_num = 0
+    print('train_datalen:', len(data_loader))
     data_loader = tqdm(data_loader, file=sys.stdout)
     for step, data in enumerate(data_loader):
         images, labels = data
@@ -212,7 +234,10 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, fs, loss_name)
 
 @torch.no_grad()
 def evaluate(model, data_loader, device, foldidx, args, fs):
+
+    os.makedirs(args.plot_path, exist_ok=True)
     model.eval()
+
     hr_pred_all = []  # 累计预测mae
     hr_label_all = []
     snr_all = []  # 累计预测snr
@@ -238,7 +263,7 @@ def evaluate(model, data_loader, device, foldidx, args, fs):
             label_np = label_window.detach().cpu().numpy()
 
             if args.plot in ["wave", "both"]:
-                fig_name = f'wave_{args.model_name}_{args.train_dataset}_{args.val_dataset}_fold{foldidx}_seed{args.seed}_aug{args.aug}_{step}_{i}'
+                fig_name = f'wave_{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_{args.val_dataset}_scene{args.scene[1]}_fold{foldidx}_seed{args.seed}_aug{args.aug}_{step}_{i}'
                 fig_path = os.path.join(args.plot_path, fig_name)
                 plot_wave_psd(pred_np, label_np, fs, fig_path)
 
@@ -259,7 +284,7 @@ def evaluate(model, data_loader, device, foldidx, args, fs):
         data_loader.desc = 'val on {}'.format(step)
 
     if args.plot in ["blandaltman", "both"]:
-        fig_name = f'blandaltman_{args.model_name}_{args.train_dataset}_{args.val_dataset}_fold{foldidx}__seed{args.seed}_aug{args.aug}_{val_len}'
+        fig_name = f'blandaltman_{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_{args.val_dataset}_scene{args.scene[1]}_fold{foldidx}__seed{args.seed}_aug{args.aug}_{val_len}'
         fig_path = os.path.join(args.plot_path, fig_name)
 
         plot_blandaltman(hr_pred_all, hr_label_all, fig_path)
@@ -298,6 +323,6 @@ def summarize_kfold_results(fold_metrics):
 
 
 if __name__ == '__main__':
-    flods = read_split_data('DLCN',  seed=42, scene='FIFP')
+    flods = read_split_data('DLCN',  seed=42, scene='Raw', tag='intra')
 
 

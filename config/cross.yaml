@@ -1,11 +1,11 @@
 # intra.yaml
 
 train_dataset: UBFCrPPG       # Name of the training dataset
-val_dataset: UBFCrPPG         # Name of the validation dataset
+val_dataset: PURE         # Name of the validation dataset
 train_len: 160                # Length of training data (in frames)
 val_len: 10                   # Length of validation data (in seconds)
 epochs: 1                    # Number of training epochs
-batch_size: 4                 # Batch size
+batch_size: 1                 # Batch size
 scene: ['Raw', 'Raw']         # Different scenes in dataset, [0] for training, [1] for validation
 nw: 0                         # Number of workers for data loading (recommend >0 to speed up)
 lr: 5e-5                      # Initial learning rate
