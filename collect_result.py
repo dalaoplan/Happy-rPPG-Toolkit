@@ -18,11 +18,17 @@ def collect_results_from_json(json_dir):
 
             # 解析 JSON 中的关键信息
             model_name = data.get("model_name", "UnknownModel")
+
             train_dataset = data.get("train_dataset", "UnknownTrain")
-            test_dataset = data.get("test_dataset", "UnknownTest")
+            train_scene = data.get("train_scene", "UnknownTrain")
+
+            val_dataset = data.get("val_dataset", "UnknownTest")
+            val_scene = data.get("val_scene", "UnknownTrain")
+
             augment = data.get("augment", "UnknownTest")
             seed = data.get("seed", "UnknownTest")
-            metrics = data.get("metrics", {})
+
+            metrics = data.get("final_mean_metrics", {})
 
             # 获取各指标的 value 和 std
             mae_val = metrics.get("MAE", {}).get("value", None)
@@ -56,7 +62,9 @@ def collect_results_from_json(json_dir):
                 "aug":augment,
                 "seed":seed,
                 "Train":train_dataset,
-                "Test":test_dataset,
+                "Tscene":train_scene,
+                "Val":val_dataset,
+                'Vscene':val_scene,
                 "MAE": val_std_str(mae_val, mae_std),
                 "RMSE": val_std_str(rmse_val, rmse_std),
                 "MAPE": val_std_str(mape_val, mape_std),
@@ -68,14 +76,14 @@ def collect_results_from_json(json_dir):
 
     # 将所有结果转换为 DataFrame
     df = pd.DataFrame(rows, columns=[
-        "Model","aug", "seed", "Train","Test", "MAE", "RMSE", "MAPE", "Pearson", "SNR", "MACC"
+        "Model","aug", "seed", "Train","Tscene" ,"Val",'Vscene' ,"MAE", "RMSE", "MAPE", "Pearson", "SNR", "MACC"
     ])
     return df
 
 
 if __name__ == "__main__":
     # 假设所有 .json 文件都存放在 'weight' 文件夹中
-    json_dir = f"./save"
+    json_dir = f"./result/save"
     df_results = collect_results_from_json(json_dir)
 
     # 打印 DataFrame

@@ -19,4 +19,5 @@ seed: 42                      # Random seed for reproducibility
 loss_name: NegPearson         # Loss function name
 plot: blandaltman             # Visualization type: wave, blandaltman, or both
 plot_path: result/Plots       # Path to save visualization figures
+dataset_root: D:/Dataset      # Dataset path
 hr_method: FFT                # Method to calculate heart rate: FFT or Peak

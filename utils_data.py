@@ -3,7 +3,6 @@ import torch
 from tqdm import tqdm
 import os
 import json
-import random
 import numpy as np
 from collections import defaultdict
 from sklearn.model_selection import KFold
@@ -11,11 +10,9 @@ from model_selector import select_loss
 from post_process import calculate_metric_batch_video, calculate_metric_per_video ,calculate_metrics
 from visual import plot_wave_psd, plot_blandaltman
 
-def read_split_data(dataset_name: str = "UBFCrPPG", Train_len: int = 160, seed: int = 42, scene:str = 'Raw', tag: str = 'intra'):
-    random.seed(seed)
-    np.random.seed(seed)
+def read_split_data(dataset_name: str = "UBFCrPPG", dataset_root = 'D:\\Dataset', Train_len: int = 160, seed: int = 42, scene:str = 'Raw', tag: str = 'intra'):
 
-    data_root = f"D:\\Dataset\\{dataset_name}"
+    data_root = os.path.join(dataset_root, dataset_name)
     assert os.path.exists(data_root), f"dataset root: {data_root} does not exist."
 
     # 加载并排序文件路径
@@ -91,8 +88,8 @@ def read_split_data(dataset_name: str = "UBFCrPPG", Train_len: int = 160, seed: 
             key=lambda x: (int(x.split("_")[0][1:]), int(x.split("_")[1].split(".")[0]))
         )
 
-    file_paths = [os.path.join(data_root, f) for f in files]
-    print(f'all of num: {len(file_paths)}')
+    file_paths = [os.path.join(data_root, f) for f in files][:10]
+    print(f'all of dataset num: {len(file_paths)}')
 
     if tag == 'cross':
         json_path = f"./dataconfig/{tag}_{dataset_name}_scene{scene}_seed{seed}.json"
@@ -187,7 +184,6 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, fs, loss_name)
     optimizer.zero_grad()
 
     sample_num = 0
-    print('train_datalen:', len(data_loader))
     data_loader = tqdm(data_loader, file=sys.stdout)
     for step, data in enumerate(data_loader):
         images, labels = data
@@ -233,9 +229,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, fs, loss_name)
 
 
 @torch.no_grad()
-def evaluate(model, data_loader, device, foldidx, args, fs):
-
-    os.makedirs(args.plot_path, exist_ok=True)
+def evaluate(model, data_loader, device, foldidx, args, fs, plot_path):
     model.eval()
 
     hr_pred_all = []  # 累计预测mae
@@ -264,7 +258,7 @@ def evaluate(model, data_loader, device, foldidx, args, fs):
 
             if args.plot in ["wave", "both"]:
                 fig_name = f'wave_{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_{args.val_dataset}_scene{args.scene[1]}_fold{foldidx}_seed{args.seed}_aug{args.aug}_{step}_{i}'
-                fig_path = os.path.join(args.plot_path, fig_name)
+                fig_path = os.path.join(plot_path, fig_name)
                 plot_wave_psd(pred_np, label_np, fs, fig_path)
 
             # pred_all.append(pred_np)
@@ -285,7 +279,7 @@ def evaluate(model, data_loader, device, foldidx, args, fs):
 
     if args.plot in ["blandaltman", "both"]:
         fig_name = f'blandaltman_{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_{args.val_dataset}_scene{args.scene[1]}_fold{foldidx}__seed{args.seed}_aug{args.aug}_{val_len}'
-        fig_path = os.path.join(args.plot_path, fig_name)
+        fig_path = os.path.join(plot_path, fig_name)
 
         plot_blandaltman(hr_pred_all, hr_label_all, fig_path)
 
@@ -308,13 +302,13 @@ def summarize_kfold_results(fold_metrics):
         value_list = values_across_folds[metric]
         std_list = stds_across_folds[metric]
         final_metrics[metric] = {
-            "mean": np.mean(value_list),
+            "value": np.mean(value_list),
             "std": np.std(value_list, ddof=1),         # 5个fold的 value 的 std
         }
 
     print("5-fold cross validation summary:")
     for metric, vals in final_metrics.items():
-        print(f"{metric}: {vals['mean']:.3f}, +/- {vals['std']:.3f}")
+        print(f"{metric}: {vals['value']:.3f}, +/- {vals['std']:.3f}")
 
     return final_metrics
 

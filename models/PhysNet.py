@@ -175,7 +175,7 @@ class PhysNet_padding_Encoder_Decoder_MAX(nn.Module):
 
 if __name__ == '__main__':
     device = 'cuda'
-    input = torch.randn((1, 3, 80, 128, 128)).to(device)
+    input = torch.randn((1, 3, 160, 128, 128)).to(device)
     model = PhysNet_padding_Encoder_Decoder_MAX(160).to(device)
     out = model(input)
     print(out.shape)

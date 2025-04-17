@@ -16,13 +16,16 @@ from utils_data import read_split_data, train_one_epoch, evaluate, summarize_kfo
 def main(args):
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     # Create folder for saving final results
-    save_dir = "./save"
+    save_dir = "./result/save"
     os.makedirs(save_dir, exist_ok=True)
 
     # Create folder for saving model weights
     model_dir = f'./weights/'
-    if os.path.exists(model_dir) is False:
-        os.makedirs(model_dir)
+    os.makedirs(model_dir, exist_ok=True)
+
+    plot_dir = './result/plots'
+    os.makedirs(plot_dir, exist_ok=True)
+
 
     # Get frame rates and video counts for train and validation datasets
     train_fs, train_video = get_dataset_info(args.train_dataset)
@@ -31,10 +34,10 @@ def main(args):
     # Check if cross-dataset or cross-scene validation is needed
     if args.train_dataset != args.val_dataset or args.scene[0] != args.scene[1]:
         print('Only test!')
-        print(f'Train on {args.train_dataset} scene {args.scene[0]}, val on {args.val_dataset} scene {args.scene[1]}')
+        print(f'{args.model_name} train on {args.train_dataset} scene {args.scene[0]}, val on {args.val_dataset} scene {args.scene[1]}')
 
         # Load test set for cross-scene/domain evaluation
-        val_list =read_split_data(dataset_name=args.val_dataset, Train_len=args.val_len, seed=args.seed, scene=args.scene[1], tag='cross')
+        val_list =read_split_data(dataset_name=args.val_dataset, dataset_root= args.dataset_root,Train_len=args.val_len, seed=args.seed, scene=args.scene[1], tag='cross')
         val_data = MyDataset(data_list=val_list,
                              T=args.val_len,
                              transform=None,
@@ -66,7 +69,8 @@ def main(args):
                                     device=device,
                                     foldidx=fold_idx,
                                     args=args,
-                                    fs=val_fs)
+                                    fs=val_fs,
+                                    plot_path=plot_dir)
 
             fold_metrics.append({
                 "fold": fold_idx + 1,
@@ -84,7 +88,9 @@ def main(args):
                     "model_name": args.model_name,
                     "seed": args.seed,
                     "train_dataset": args.train_dataset,
+                    "train_scene":args.scene[0],
                     "val_dataset": args.val_dataset,
+                    "val_scene": args.scene[1],
                     "val_len": args.val_len * val_fs,
                     "augment": args.aug,
                     "val_num_samples": len(val_loader.dataset),
@@ -103,11 +109,11 @@ def main(args):
 
     else:
         print('Train and test!')
-        print(f'Train on {args.train_dataset} scene {args.scene[0]}, val on {args.val_dataset} scene {args.scene[1]}')
+        print(f'{args.model_name} train on {args.train_dataset} scene {args.scene[0]}, val on {args.val_dataset} scene {args.scene[1]}')
 
         tb_writer = SummaryWriter(f'./logs/{args.model_name}_{args.aug}_{args.train_dataset}_{args.scene[0]}_{args.seed}')
 
-        all_folds = read_split_data(dataset_name=args.train_dataset, Train_len=args.train_len, seed=args.seed, scene=args.scene[0], tag='intra')
+        all_folds = read_split_data(dataset_name=args.train_dataset, dataset_root= args.dataset_root, Train_len=args.train_len, seed=args.seed, scene=args.scene[0], tag='intra')
 
         fold_metrics = []  # Store metrics for each fold
         for fold_idx, (train_list, val_list) in enumerate(all_folds):
@@ -122,7 +128,7 @@ def main(args):
             #  "augmentation_time_adapt"      # T
             selected_transforms = get_transforms_from_args(args.aug)
             data_transform = VideoTransform(selected_transforms)
-            print(f'Using data augmentation{selected_transforms}data augmentation')
+            print(f'Using {selected_transforms} data augmentation')
 
             # Create training dataset
             train_data = MyDataset(data_list=train_list,
@@ -225,7 +231,8 @@ def main(args):
                                     device=device,
                                     foldidx=fold_idx,
                                     args=args,
-                                    fs=val_fs)
+                                    fs=val_fs,
+                                    plot_path=plot_dir)
 
             del model
             torch.cuda.empty_cache()
@@ -244,7 +251,9 @@ def main(args):
                     "model_name": args.model_name,
                     "seed": args.seed,
                     "train_dataset": args.train_dataset,
+                    "train_scene":args.scene[0],
                     "val_dataset": args.val_dataset,
+                    "val_scene": args.scene[1],
                     "val_len": args.val_len * val_fs,
                     "augment": args.aug,
                     "val_num_samples": len(val_loader.dataset),
@@ -292,7 +301,10 @@ def parse_args():
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--loss_name', type=str, default='NegPearson')
     parser.add_argument('--plot', type=str, default='blandaltman')
-    parser.add_argument('--plot_path', type=str, default="result/Plots")
+    parser.add_argument('--plot_path', type=str, default="result/plots")
+    parser.add_argument('--dataset_root', type=str, default="D:\\Dataset")
+
+
     parser.add_argument('--hr_method', type=str, default='FFT')
 
     # 第二步：先解析出 config 路径

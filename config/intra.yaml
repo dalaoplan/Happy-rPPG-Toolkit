@@ -1,7 +1,7 @@
 # intra.yaml
 
-train_dataset: DLCN       # Name of the training dataset
-val_dataset: DLCN         # Name of the validation dataset
+train_dataset: UBFCrPPG       # Name of the training dataset
+val_dataset: UBFCrPPG         # Name of the validation dataset
 train_len: 160                # Length of training data (in frames)
 val_len: 10                   # Length of validation data (in seconds)
 epochs: 20                    # Number of training epochs

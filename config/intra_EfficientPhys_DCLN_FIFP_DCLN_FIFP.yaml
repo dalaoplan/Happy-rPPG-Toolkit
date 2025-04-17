@@ -11,7 +11,7 @@ nw: 0                         # Number of workers for data loading (recommend >0
 lr: 5e-5                      # Initial learning rate
 lrf: 0.01                     # Final learning rate factor (for learning rate decay)
 optimizer: adamw              # Optimizer type, e.g., adam, adamw, sgd
-model_name: RhythmFormer           # Model architecture name
+model_name: EfficientPhys           # Model architecture name
 weight_path: best             # Path to model weights; 'best' for best weights, 'last' for latest
 device: cuda:0                # Device to run on (e.g., cuda:0, cuda:0,1 or cpu)
 aug: TH                       # Data augmentation method tag
