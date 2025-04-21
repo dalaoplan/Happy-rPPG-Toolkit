@@ -303,8 +303,6 @@ def parse_args():
     parser.add_argument('--plot', type=str, default='blandaltman')
     parser.add_argument('--plot_path', type=str, default="result/plots")
     parser.add_argument('--dataset_root', type=str, default="D:\\Dataset")
-
-
     parser.add_argument('--hr_method', type=str, default='FFT')
 
     # 第二步：先解析出 config 路径

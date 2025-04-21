@@ -19,7 +19,7 @@ def collect_results_from_json(json_dir):
             # 解析 JSON 中的关键信息
             model_name = data.get("method_name", "UnknownModel")
             test_dataset = data.get("test_dataset", "UnknownTest")
-            Scen = data.get("scen", "UnknownTest")
+            Scen = data.get("scene", "UnknownTest")
             metrics = data.get("metrics", {})
 
             # 获取各指标的 value 和 std

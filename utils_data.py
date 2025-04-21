@@ -88,7 +88,7 @@ def read_split_data(dataset_name: str = "UBFCrPPG", dataset_root = 'D:\\Dataset'
             key=lambda x: (int(x.split("_")[0][1:]), int(x.split("_")[1].split(".")[0]))
         )
 
-    file_paths = [os.path.join(data_root, f) for f in files][:10]
+    file_paths = [os.path.join(data_root, f) for f in files]
     print(f'all of dataset num: {len(file_paths)}')
 
     if tag == 'cross':
@@ -155,7 +155,7 @@ def get_dataset_info(dataset_name):
         "UBFCrPPG": {"fs": 30, "video_len": 60},
         "UBFCPhys": {"fs": 35, "video_len": 180},
         "COHFACE": {"fs": 20, "video_len": 60},
-        "DLCN": {"fs": 30, "video_len": 60},  # 你自定义的数据集
+        "DLCN": {"fs": 30, "video_len": 60},
         "MMSE-HR": {"fs": 25, "video_len": 60},
         "VIPL-HR": {"fs": 30, "video_len": 30},
         "MMPD": {"fs": 30, "video_len": 60},
