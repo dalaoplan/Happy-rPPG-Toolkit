@@ -19,6 +19,7 @@ from POS_WANG import POS_WANG
 
 def test(args):
 
+    print(f'Method {args.method_name} test on {args.test_dataset} in scene {args.scene}')
     plot_path = f"result/Plots"
     if args.plot:
         if os.path.exists(plot_path) is False:
@@ -26,7 +27,7 @@ def test(args):
 
 
     test_len = args.test_len * args.fps
-    test_path = read_split_data(args.test_dataset, args.scen)
+    test_path = read_split_data(args.test_dataset, args.scene)
 
     dataset = MyDataset(data_list=test_path,
                             T=test_len,
@@ -103,7 +104,7 @@ def test(args):
         data_loader.desc = 'Test on {}'.format(step)
 
     if args.plot in ["blandaltman", "both"]:
-        fig_name = f'blandaltman_{args.method_name}_{args.scen}_{args.test_dataset}_{test_len}'
+        fig_name = f'blandaltman_{args.method_name}_{args.scene}_{args.test_dataset}_{test_len}'
         fig_path = os.path.join(plot_path, fig_name)
 
         plot_blandaltman(hr_pred_all, hr_label_all, fig_path)
@@ -114,7 +115,7 @@ def test(args):
     # 准备保存的测试信息
     test_results = {
         "method_name": args.method_name,
-        "scen": args.scen,
+        "scene": args.scene,
         "test_dataset": args.test_dataset,
         "test_len": test_len,
         "visualization_path": plot_path,  # 你可以指定一个路径
@@ -124,11 +125,11 @@ def test(args):
 
 
     # 确保保存目录存在
-    save_dir = "./save"
+    save_dir = "result/save"
     os.makedirs(save_dir, exist_ok=True)
 
     # 生成保存文件的路径
-    save_path = os.path.join(save_dir, f"{args.method_name}_{args.scen}_{args.test_dataset}_{test_len}.json")
+    save_path = os.path.join(save_dir, f"{args.method_name}_{args.scene}_{args.test_dataset}_{test_len}.json")
 
     # 保存到 JSON 文件
     with open(save_path, "w") as f:
@@ -139,7 +140,7 @@ def test(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--test-dataset', type=str, default='DLCN', help='test dataset name')
-    parser.add_argument('--scen', type=str, default='FIFP', help='test scene, R: Relax, E: Exercise, FIFP, VIFP, FIVP, VIVP')
+    parser.add_argument('--scene', type=str, default='FIFP', help='test scene, R: Relax, E: Exercise, FIFP, VIFP, FIVP, VIVP')
     parser.add_argument('--test-len', type=int, default=10, help='test length, 10 second')
     parser.add_argument('--fps', type=int, default=30)
     parser.add_argument('--nw', type=int, default=0, help='num_workers')

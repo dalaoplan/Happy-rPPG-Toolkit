@@ -28,22 +28,26 @@ def run_train_with_config(cfg: dict):
 
 if __name__ == '__main__':
     config_path = 'config/intra.yaml'
-    model_name = 'TSCAN'
-
+    model_name = 'PhysNet'
+    train_dataset = 'UBFCrPPG'
+    val_dataset = 'DLCN'
     # 多个训练任务的设置
-    scene_names = ['Raw'] # ['rest', 'exercise', 'Raw']
+    train_scenes = ['Raw'] # ['rest', 'exercise', 'Raw']
+    val_scenes = ['Raw']
 
-    for scene in scene_names:
-        # 修改参数
-        changes = {
-            'scene': [scene, scene],
-            'model_name': model_name
-        }
+    for train_scene in train_scenes:
+        for val_scene in val_scenes:
+            # 修改参数
+            changes = {
+                'scene': [train_scene, val_scene],
+                'model_name': model_name,
+                'train_dataset': train_dataset,
+                'val_dataset': val_dataset
+            }
+                # print(f"\n🌟 当前训练场景: {scene}")
+            cfg = load_and_modify_config(config_path, changes)
+            run_train_with_config(cfg)
+            print(f"✅ {model_name}在{train_dataset}的{train_scene}场景中训练， 在{val_dataset}的{val_scene}场景中验证完成")
+            print("=" * 50)
 
-        print(f"\n🌟 当前训练场景: {scene}")
-        cfg = load_and_modify_config(config_path, changes)
-        run_train_with_config(cfg)
-        print(f"✅ 场景 {scene} 训练完成")
-        print("=" * 50)
-
-    print("🎉 所有训练任务已完成！")
+        print("🎉 所有训练任务已完成！")

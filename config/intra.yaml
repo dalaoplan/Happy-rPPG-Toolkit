@@ -4,7 +4,7 @@ train_dataset: UBFCrPPG       # Name of the training dataset
 val_dataset: UBFCrPPG         # Name of the validation dataset
 train_len: 160                # Length of training data (in frames)
 val_len: 10                   # Length of validation data (in seconds)
-epochs: 20                    # Number of training epochs
+epochs: 1                    # Number of training epochs
 batch_size: 4                 # Batch size
 scene: ['FIFP', 'FIFP']         # Different scenes in dataset, [0] for training, [1] for validation
 nw: 0                         # Number of workers for data loading (recommend >0 to speed up)
@@ -19,4 +19,5 @@ seed: 42                      # Random seed for reproducibility
 loss_name: NegPearson         # Loss function name
 plot: blandaltman             # Visualization type: wave, blandaltman, or both
 plot_path: result/Plots       # Path to save visualization figures
+dataset_root: D:/Dataset
 hr_method: FFT                # Method to calculate heart rate: FFT or Peak
