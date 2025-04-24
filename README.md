@@ -15,7 +15,7 @@
 - A modular, reproducible pipeline for training, validation, and cross-dataset testing
 
 
----
+
 
 ## 🧠 Dataset: DCLN
 
@@ -38,7 +38,7 @@
 
 *(Insert grid of frames here from different lighting conditions)*
 
----
+
 
 ## 🔬 Included Methods
 
@@ -55,7 +55,7 @@ The following rPPG methods are included or supported:
 
 > 🧩 New models can be added by creating a new file in `models/` and registering it in `model_factory.py`.
 
----
+
 
 ## ⚙️ Installation
 
@@ -75,12 +75,12 @@ pip install -r requirements.txt
 ```
 
 ```
----
+
 ## 📊 Evaluation Results
 Performance of different models on DCLN dataset:
 
 
----
+
 ## 🧩 Extending Happy-rPPG Toolkit
 * Add a new model: Create your model file in models/, then register it.
 
@@ -93,11 +93,11 @@ Performance of different models on DCLN dataset:
 For issues, suggestions, or collaborations:
 📧 Email: your_email@cqut.edu.cn
 
----
+
 
 ## 🤝 Contributors
 
----
+
 ##  📚 Citation
 If you use this toolkit or the DCLN dataset, please cite:
 ````
