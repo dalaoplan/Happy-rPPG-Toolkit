@@ -29,6 +29,34 @@ def process_video(frames):
     RGB = RGB.transpose(1, 0).reshape(1, 3, -1)
     return np.asarray(RGB)
 
+def get_dataset_info(dataset_name):
+    """
+    根据数据集名称返回该数据集的采样率 fs 和视频长度 video_len（单位为秒）
+
+    参数:
+        dataset_name (str): 数据集名称，比如 'PURE', 'UBFC-rPPG', 'DCLN', 等等
+
+    返回:
+        fs (int or float): 帧率 (frames per second)
+        video_len (int or float): 视频总时长（单位为秒）
+    """
+
+    dataset_info = {
+        "PURE": {"fs": 30, "video_len": 60},
+        "UBFCrPPG": {"fs": 30, "video_len": 60},
+        "UBFCPhys": {"fs": 35, "video_len": 180},
+        "COHFACE": {"fs": 20, "video_len": 60},
+        "DLCN": {"fs": 30, "video_len": 60},
+        "MMSE-HR": {"fs": 25, "video_len": 60},
+        "VIPL-HR": {"fs": 30, "video_len": 30},
+        "MMPD": {"fs": 30, "video_len": 60},
+        # 根据需要补充更多数据集
+    }
+
+    if dataset_name not in dataset_info:
+        raise ValueError(f"Unknown dataset name: {dataset_name}")
+
+    return dataset_info[dataset_name]["fs"], dataset_info[dataset_name]["video_len"]
 
 
 def read_split_data(test_dataset_name: str = "UBFCrPPG", group: str = 'R'):
@@ -49,10 +77,11 @@ def read_split_data(test_dataset_name: str = "UBFCrPPG", group: str = 'R'):
     }
     # 用于存储每个场景对应的文件列表
     scene_data = defaultdict(list)
-
     rest_files = []
     exercise_files = []
-    if test_dataset_name == "DLCN":
+
+    test_files_paths = []
+    if test_dataset_name == "DLCN" and group != "Raw":
         # 遍历文件夹中所有 .h5 文件
         for file in os.listdir(test_data_root):
             if file.endswith('.h5') and file.startswith('P'):

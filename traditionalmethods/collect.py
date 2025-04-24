@@ -69,7 +69,7 @@ def collect_results_from_json(json_dir):
 
 if __name__ == "__main__":
     # 假设所有 .json 文件都存放在 'weight' 文件夹中
-    json_dir = f"./save"
+    json_dir = r"D:\Happy-rPPG-Toolkit\traditionalmethods\result\save"
     df_results = collect_results_from_json(json_dir)
 
     # 打印 DataFrame
