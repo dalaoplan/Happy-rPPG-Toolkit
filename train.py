@@ -25,7 +25,7 @@ def main(args):
 
     # Create folder for saving training state
     resume_dir = './result/resume'
-    os.makedirs(plot_dir, exist_ok=True)
+    os.makedirs(resume_dir, exist_ok=True)
 
     # Create folder for saving model weights
     model_dir = f'./weights/'
