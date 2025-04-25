@@ -19,12 +19,18 @@ def main(args):
     save_dir = "./result/save"
     os.makedirs(save_dir, exist_ok=True)
 
+    # Create folder for saving plots of result
+    plot_dir = './result/plots'
+    os.makedirs(plot_dir, exist_ok=True)
+
+    # Create folder for saving training state
+    resume_dir = './result/resume'
+    os.makedirs(plot_dir, exist_ok=True)
+
     # Create folder for saving model weights
     model_dir = f'./weights/'
     os.makedirs(model_dir, exist_ok=True)
 
-    plot_dir = './result/plots'
-    os.makedirs(plot_dir, exist_ok=True)
 
 
     # Get frame rates and video counts for train and validation datasets
@@ -112,20 +118,27 @@ def main(args):
         print(f'{args.model_name} train on {args.train_dataset} scene {args.scene[0]}, val on {args.val_dataset} scene {args.scene[1]}')
 
         tb_writer = SummaryWriter(f'./logs/{args.model_name}_{args.aug}_{args.train_dataset}_{args.scene[0]}_{args.seed}')
+        # 记录当前 fold 和 epoch 状态，用于异常中断恢复
+        global_resume_file = os.path.join(resume_dir,
+                                          f"{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_{args.seed}_{args.aug}_global_resume.json")
+        if os.path.exists(global_resume_file):
+            with open(global_resume_file, 'r') as f:
+                global_resume = json.load(f)
+        else:
+            global_resume = {"current_fold": 0, "current_epoch": 1}
 
         all_folds = read_split_data(dataset_name=args.train_dataset, dataset_root= args.dataset_root, Train_len=args.train_len, seed=args.seed, scene=args.scene[0], tag='intra')
-
         fold_metrics = []  # Store metrics for each fold
         for fold_idx, (train_list, val_list) in enumerate(all_folds):
-            print(f"\n========== Fold {fold_idx + 1}/5 ==========")
+            if fold_idx < global_resume["current_fold"]:
+                print(f"✅ Fold {fold_idx + 1} 已完成，跳过。")
+                continue
 
-            # Define data augmentation
-            #  "augment_gaussian_noise",      # G
-            #  "augment_time_reversal",       # R
-            #  "augment_horizontal_flip",     # H
-            #  "augment_illumination_noise",  # I
-            #  "augment_random_resized_crop", # C
-            #  "augmentation_time_adapt"      # T
+            # 记录最新epoch的模型权重
+            checkpoint_path_last = os.path.join(model_dir,
+                                           f"{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_fold{fold_idx + 1}_{args.seed}_{args.aug}_last.pth")
+
+            print(f"\n========== Fold {fold_idx + 1}/5 ==========")
             selected_transforms = get_transforms_from_args(args.aug)
             data_transform = VideoTransform(selected_transforms)
             print(f'Using {selected_transforms} data augmentation')
@@ -162,6 +175,19 @@ def main(args):
             create_model = select_model(args.model_name, len=args.train_len)
             model = create_model.to(device)
 
+            checkpoint = None
+            if os.path.exists(checkpoint_path_last):
+                checkpoint = torch.load(checkpoint_path_last, map_location=device)
+                model.load_state_dict(checkpoint["model"])
+                start_epoch = checkpoint.get("epoch", 1) + 1
+                print(f"🔁 模型在epoch:{start_epoch}训练过程中中断, 当前从epoch:{start_epoch}继续训练")
+
+            else:
+                start_epoch = 1
+
+            if fold_idx == global_resume["current_fold"]:
+                start_epoch = global_resume["current_epoch"]
+
             # Set optimizer
             pg = [p for p in model.parameters() if p.requires_grad]
             optimizer = {
@@ -174,12 +200,23 @@ def main(args):
             lf = lambda x: ((1 + math.cos(x * math.pi / args.epochs)) / 2) * (1 - args.lrf) + args.lrf  # cosine
             scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)
 
+            # ✅ 加载 optimizer 和 scheduler 状态（如果 checkpoint 存在）
+            if checkpoint is not None:
+                if "optimizer" in checkpoint:
+                    optimizer.load_state_dict(checkpoint["optimizer"])
+                if "scheduler" in checkpoint:
+                    scheduler.load_state_dict(checkpoint["scheduler"])
 
             best_score = float('inf')  # Initialize best score for early stopping
             best_epoch = 1
             w1, w2= 0.4, 0.6  # Weights for score combination
 
-            for epoch in range(1,args.epochs+1):
+            global_resume["current_fold"] = fold_idx
+            for epoch in range(start_epoch, args.epochs+1):
+                global_resume["current_epoch"] = epoch
+                with open(global_resume_file, 'w') as f:
+                    json.dump(global_resume, f)
+
                 # train
                 train_loss,  train_mae, train_snr = train_one_epoch(model=model,
                                                         optimizer=optimizer,
@@ -188,8 +225,8 @@ def main(args):
                                                         epoch=epoch,
                                                         fs=train_fs,
                                                         loss_name=args.loss_name)
-
-                scheduler.step()  # Update learning rate
+                # Update learning rate
+                scheduler.step()
 
                 # Log training metrics
                 tags = ["train_loss", "train_mae", "train_snr", "learning_rate"]
@@ -199,18 +236,20 @@ def main(args):
                 tb_writer.add_scalar(tags[3], optimizer.param_groups[0]["lr"], epoch)
 
                 # Save model at last epoch
-                if epoch == args.epochs:
-                    checkpoint_path = os.path.join(model_dir, f"{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_fold{fold_idx + 1}_{args.seed}_{args.aug}_last.pth")
-                    torch.save(model.state_dict(), checkpoint_path)
-                    print(f"the last epoch {epoch} 模型保存到 {checkpoint_path}")
+                torch.save({
+                    "model": model.state_dict(),
+                    "optimizer": optimizer.state_dict(),
+                    "scheduler": scheduler.state_dict(),
+                    "epoch": epoch
+                }, checkpoint_path_last)
+                # print(f"✅ 当前 epoch: {epoch}，模型保存到 {checkpoint_path_last}")
 
                 score = train_loss *w1 + train_mae * w2
                 if score < best_score:
                     best_score = score  # 更新最优 Loss
                     best_epoch = epoch
                     torch.save(model.state_dict(), os.path.join(model_dir, f"{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_fold{fold_idx + 1}_{args.seed}_{args.aug}_best.pth"))
-                print(f"Best epoch: {best_epoch} | 当前是epcoh: {epoch} , loss 为:{train_loss}, mae为:{train_mae}, snr为:{train_snr}, learning rate: {optimizer.param_groups[0]['lr']}")
-
+                print(f"🔥 Best epoch: {best_epoch} | 当前是epcoh: {epoch} , loss 为:{train_loss}, mae为:{train_mae}, snr为:{train_snr}, learning rate: {optimizer.param_groups[0]['lr']}")
 
             del model
             torch.cuda.empty_cache()
@@ -237,6 +276,14 @@ def main(args):
             del model
             torch.cuda.empty_cache()
             gc.collect()
+
+            # fold 完成后，更新全局 resume.json
+            global_resume["current_fold"] = fold_idx + 1
+            global_resume["current_epoch"] = 1
+            with open(global_resume_file, 'w') as f:
+                json.dump(global_resume, f)
+
+            # 保存当前fold验证完的指标
             fold_metrics.append({
                 "fold": fold_idx + 1,
                 "metrics": metrics_dict})
@@ -287,9 +334,9 @@ def parse_args():
     parser.add_argument('--val_dataset', type=str, default='DLCN')
     parser.add_argument('--train_len', type=int, default=160)
     parser.add_argument('--val_len', type=int, default=10)
-    parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--epochs', type=int, default=5)
     parser.add_argument('--batch_size', type=int, default=4)
-    parser.add_argument('--scene', nargs='+', type=str, default=['FIFP', 'FIVP'])
+    parser.add_argument('--scene', nargs='+', type=str, default=['VIVP', 'VIVP'])
     parser.add_argument('--nw', type=int, default=0)
     parser.add_argument('--lr', type=float, default=5e-5)
     parser.add_argument('--lrf', type=float, default=0.01)
