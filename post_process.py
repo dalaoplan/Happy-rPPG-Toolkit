@@ -11,7 +11,7 @@ from scipy.sparse import spdiags
 from copy import deepcopy
 
 
-def get_hr(y, sr=30, min=45, max=156):
+def get_hr(y, sr=30, min=45, max=160):
     p, q = welch(y, sr, nfft=1e5/sr, nperseg=np.min((len(y)-1, 256)))
     return p[(p>min/60)&(p<max/60)][np.argmax(q[(p>min/60)&(p<max/60)])]*60
 
@@ -19,7 +19,7 @@ def get_hr(y, sr=30, min=45, max=156):
 #     p, q = welch(y, sr, nfft=1e5/sr, nperseg=np.min((len(y)-1, 256)))
 #     return q[(p>min/60)&(p<max/60)]
 
-def get_psd(y, sr=30, min_bpm=45, max_bpm=156):
+def get_psd(y, sr=30, min_bpm=45, max_bpm=160):
     """计算信号的功率谱密度，并筛选出 45 BPM 到 150 BPM 的部分"""
     p, q = welch(y, sr, nfft=int(1e5/sr), nperseg=np.min((len(y)-1, 256)))
     bpm = p * 60  # 频率 (Hz) 转换为 BPM

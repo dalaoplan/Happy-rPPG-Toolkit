@@ -2,6 +2,7 @@ import h5py
 import torch
 from torch.utils.data import Dataset
 import numpy as np
+import os
 
 
 class MyDataset(Dataset):
@@ -17,6 +18,9 @@ class MyDataset(Dataset):
         return len(self.data_list)
 
     def __getitem__(self, idx):
+        file_path = self.data_list[idx]
+        file_name = os.path.splitext(os.path.basename(file_path))[0]  # 例如 P1_1
+
         with h5py.File(self.data_list[idx], 'r') as f:
 
             img_length = np.min([f['imgs'].shape[0], f['bvp'].shape[0]])
@@ -24,6 +28,7 @@ class MyDataset(Dataset):
             if self.method == 'train':
                 idx_start = np.random.choice(img_length-self.T)
                 idx_end = idx_start+self.T
+                # print(f'idx_start:{idx_start}, idx_end:{idx_end}\n')
             elif self.method == 'val':
                 idx_start = 0
                 idx_end = img_length
@@ -38,7 +43,7 @@ class MyDataset(Dataset):
             if self.transform is not None:
                 img_seq, bvp = self.transform(img_seq, bvp, self.fs)   # [C, T, H, W]
 
-        return img_seq, bvp
+        return img_seq, bvp, file_name
 
 
     @staticmethod
@@ -51,10 +56,10 @@ class MyDataset(Dataset):
         - images: Tensor, shape (batch_size, C, T, H, W)
         - bvps: Tensor, shape (batch_size, T)
         """
-        images, bvps = zip(*batch)  # 解包 batch
+        images, bvps, filenames = zip(*batch)  # 解包 batch
 
         # 将 numpy array 转换成 PyTorch Tensor，并堆叠成 batch
         images = torch.tensor(np.stack(images), dtype=torch.float32)  # (batch_size, C, T, H, W)
         bvps = torch.tensor(np.stack(bvps), dtype=torch.float32)  # (batch_size, T)
 
-        return images, bvps
+        return images, bvps, filenames

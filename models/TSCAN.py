@@ -8,79 +8,6 @@ import torch
 import torch.nn as nn
 
 
-class fusion_stem(nn.Module):
-    def __init__(self, apha=0.5, belta=0.5):
-        super(fusion_stem, self).__init__()
-
-        self.stem11 = nn.Sequential(nn.Conv2d(3, 64, kernel_size=5, stride=2, padding=2),
-                                    nn.BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
-                                    nn.ReLU(inplace=True),
-                                    nn.MaxPool2d(kernel_size=3, stride=2, padding=1, dilation=1, ceil_mode=False)
-                                    )
-
-        self.stem12 = nn.Sequential(nn.Conv2d(12, 64, kernel_size=5, stride=2, padding=2),
-                                    nn.BatchNorm2d(64),
-                                    nn.ReLU(inplace=True),
-                                    nn.MaxPool2d(kernel_size=3, stride=2, padding=1, dilation=1, ceil_mode=False)
-                                    )
-
-        self.stem21 = nn.Sequential(
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-        )
-
-        self.stem22 = nn.Sequential(
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-        )
-
-        self.upsample1 = nn.Sequential(
-            nn.Upsample(scale_factor=(2, 2)),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ELU(),
-        )
-
-        self.upsample2 = nn.Sequential(
-            nn.Upsample(scale_factor=(2, 2)),
-            nn.Conv2d(64, 32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ELU(),
-        )
-
-        self.apha = apha
-        self.belta = belta
-
-    def forward(self, x):
-        """Definition of fusion_stem.
-        Args:
-          x [N,D,C,H,W]
-        Returns:
-          fusion_x [N*D,C,H,W]
-        """
-        N, D, C, H, W = x.shape
-        x1 = torch.cat([x[:, :1, :, :, :], x[:, :1, :, :, :], x[:, :D - 2, :, :, :]], 1)
-        x2 = torch.cat([x[:, :1, :, :, :], x[:, :D - 1, :, :, :]], 1)
-        x3 = x
-        x4 = torch.cat([x[:, 1:, :, :, :], x[:, D - 1:, :, :, :]], 1)
-        x5 = torch.cat([x[:, 2:, :, :, :], x[:, D - 1:, :, :, :], x[:, D - 1:, :, :, :]], 1)
-        x_diff = self.stem12(torch.cat([x2 - x1, x3 - x2, x4 - x3, x5 - x4], 2).view(N * D, 12, H, W))
-        x3 = x3.contiguous().view(N * D, C, H, W)
-        x = self.stem11(x3)
-        # fusion layer1
-        x_path1 = self.apha * x + self.belta * x_diff
-        x_path1 = self.stem21(x_path1)
-        # fusion layer2
-        x_path2 = self.stem22(x_diff)
-        x = self.apha * x_path1 + self.belta * x_path2
-
-        x = self.upsample1(x)
-        x = self.upsample2(x)
-        return x
-
-
 class Attention_mask(nn.Module):
     def __init__(self):
         super(Attention_mask, self).__init__()
@@ -237,6 +164,7 @@ class TSCAN(nn.Module):
         d9 = d8.view(d8.size(0), -1)                      # [320, 57600]
         d10 = torch.tanh(self.final_dense_1(d9))
         d11 = self.dropout_4(d10)
+        print(d11.shape)
         out = self.final_dense_2(d11)
 
         return out.view(-1, D)

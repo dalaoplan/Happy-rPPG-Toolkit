@@ -29,7 +29,7 @@ def collect_results_from_json(json_dir):
             seed = data.get("seed", "UnknownTest")
 
             metrics = data.get("final_mean_metrics", {})
-
+            
             # 获取各指标的 value 和 std
             mae_val = metrics.get("MAE", {}).get("value", None)
             mae_std = metrics.get("MAE", {}).get("std", None)
@@ -83,7 +83,7 @@ def collect_results_from_json(json_dir):
 
 if __name__ == "__main__":
     # 假设所有 .json 文件都存放在 'weight' 文件夹中
-    json_dir = f"E:/result/result_EfficientPhys/save"
+    json_dir = f"E:/result/result_PhysNet"
     df_results = collect_results_from_json(json_dir)
 
     # 打印 DataFrame
@@ -95,3 +95,4 @@ if __name__ == "__main__":
 
     # 如果想保存为 CSV：
     df_results.to_csv("all_experiment_results.csv", index=False, encoding="utf-8-sig")
+    print("实验结果已保存为 all_experiment_results.csv")

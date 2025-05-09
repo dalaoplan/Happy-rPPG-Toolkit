@@ -9,7 +9,7 @@ from torch import LongTensor, Tensor
 import math
 from timm.layers import DropPath
 
-from models.base.rrsda import video_regional_routing_attention_torch
+from base.rrsda import video_regional_routing_attention_torch
 
 class CDC_T(nn.Module):
     """
@@ -94,7 +94,7 @@ class video_BRA(nn.Module):
         k_r:Tensor = k_r.flatten(2, 4) # nc(thw)
         a_r = q_r @ k_r # n(thw)(thw)
         _, idx_r = torch.topk(a_r, k=self.topk, dim=-1) # n(thw)k
-        idx_r:LongTensor = idx_r.unsqueeze_(1).expand(-1, self.num_heads, -1, -1) 
+        idx_r:LongTensor = idx_r.unsqueeze_(1).expand(-1, self.num_heads, -1, -1)  #n n_head (thw) k
 
         # STEP 3: refined attention
         output, attn_mat = self.attn_fn(query=q, key=k, value=v, scale=self.scale,

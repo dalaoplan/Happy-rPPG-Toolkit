@@ -34,7 +34,7 @@ if __name__ == '__main__':
     # 多个训练任务的设置
     train_scenes = ['Raw'] # ['rest', 'exercise', 'Raw']
     val_scenes = ['Raw']
-
+    # TODO: 这里可以对 traindataset 和 val_dataset 进行循环
     for train_scene in train_scenes:
         for val_scene in val_scenes:
             # 修改参数

@@ -82,7 +82,8 @@ class DeepPhys(nn.Module):
         elif img_size == 96:
             self.final_dense_1 = nn.Linear(30976, self.nb_dense, bias=True)
         elif img_size == 128:
-            self.final_dense_1 = nn.Linear(57600, self.nb_dense, bias=True)
+            self.avg_pooling_3 = nn.AvgPool2d((4, 4))
+            self.final_dense_1 = nn.Linear(14400, self.nb_dense, bias=True)
         else:
             raise Exception('Unsupported image size')
         self.final_dense_2 = nn.Linear(self.nb_dense, 1, bias=True)

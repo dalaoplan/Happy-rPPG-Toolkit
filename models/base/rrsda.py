@@ -18,7 +18,8 @@ def _grid2seq(x:Tensor, region_size:Tuple[int], num_heads:int):
     """
     B, C, T, H, W = x.size()
     region_t ,region_h, region_w = T//region_size[0],  H//region_size[1],  W//region_size[2]
-    x = x.view(B, num_heads, C//num_heads, region_t, region_size[0],region_h, region_size[1], region_w, region_size[2])
+    x = x.view(B, num_heads, C//num_heads, region_t, region_size[0],
+               region_h, region_size[1], region_w, region_size[2])
     x = torch.einsum('bmdtohpwq->bmthwopqd', x).flatten(2, 4).flatten(-4, -2) # (bs, nhead, nregion, reg_size, head_dim)
     return x, region_t, region_h, region_w
 
