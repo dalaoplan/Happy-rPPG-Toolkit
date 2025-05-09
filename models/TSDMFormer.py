@@ -8,154 +8,100 @@ import math
 from typing import Tuple, Union
 from fairscale.nn.checkpoint import checkpoint_wrapper
 from timm.models.layers import trunc_normal_
-from base.video_bra import video_BiFormerBlock
-from base.TAdaConv import TAdaConv3d, RouteFuncMLP
+from models.base.video_bra import video_BiFormerBlock
 from thop import profile
 
-
-# class Fusion_Stem(nn.Module):
-#     def __init__(self, apha=0.5, belta=0.5):
-#         super(Fusion_Stem, self).__init__()
-#
-#         self.stem11 = nn.Sequential(nn.Conv2d(3, 64, kernel_size=5, stride=2, padding=2),
-#                                     nn.BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
-#                                     nn.ReLU(inplace=True),
-#                                     nn.MaxPool2d(kernel_size=3, stride=2, padding=1, dilation=1, ceil_mode=False)
-#                                     )
-#
-#         self.stem12 = nn.Sequential(nn.Conv2d(12, 64, kernel_size=5, stride=2, padding=2),
-#                                     nn.BatchNorm2d(64),
-#                                     nn.ReLU(inplace=True),
-#                                     nn.MaxPool2d(kernel_size=3, stride=2, padding=1, dilation=1, ceil_mode=False)
-#                                     )
-#
-#         self.stem21 = nn.Sequential(
-#             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-#             nn.BatchNorm2d(64),
-#             nn.ReLU(inplace=True),
-#         )
-#
-#         self.stem22 = nn.Sequential(
-#             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-#             nn.BatchNorm2d(64),
-#             nn.ReLU(inplace=True),
-#         )
-#
-#         self.apha = apha
-#         self.belta = belta
-#
-#     def forward(self, x):
-#         """Definition of Fusion_Stem.
-#         Args:
-#           x [N,D,C,H,W]
-#         Returns:
-#           fusion_x [N*D,C,H/4,W/4]
-#         """
-#         N, D, C, H, W = x.shape
-#         x1 = torch.cat([x[:, :1, :, :, :], x[:, :1, :, :, :], x[:, :D - 2, :, :, :]], 1)
-#         x2 = torch.cat([x[:, :1, :, :, :], x[:, :D - 1, :, :, :]], 1)
-#         x3 = x
-#         x4 = torch.cat([x[:, 1:, :, :, :], x[:, D - 1:, :, :, :]], 1)
-#         x5 = torch.cat([x[:, 2:, :, :, :], x[:, D - 1:, :, :, :], x[:, D - 1:, :, :, :]], 1)
-#         x_diff = self.stem12(torch.cat([x2 - x1, x3 - x2, x4 - x3, x5 - x4], 2).view(N * D, 12, H, W))
-#         x3 = x3.contiguous().view(N * D, C, H, W)
-#         x = self.stem11(x3)
-#
-#         # fusion layer1
-#         x_path1 = self.apha * x + self.belta * x_diff
-#         x_path1 = self.stem21(x_path1)
-#         # fusion layer2
-#         x_path2 = self.stem22(x_diff)
-#         x = self.apha * x_path1 + self.belta * x_path2
-#
-#         return x
-
-class TAdaConv(nn.Module):
-    def __init__(self, in_channels=3, out_channels=64):
-        super().__init__()
-
-        self.conv_rf = RouteFuncMLP(
-            c_in=in_channels,   # 使用传入的 in_channels
-            ratio=4,
-            kernels=[3, 3],
-        )
-
-        self.conv = TAdaConv3d(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=[1, 3, 3],
-            stride=[1, 1, 1],
-            padding=[0, 1, 1],
-            bias=False,
-            cal_dim="cin"
+class SEBlock(nn.Module):
+    def __init__(self, in_c, reduction=4):
+        super(SEBlock, self).__init__()
+        self.se = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),               # 输出大小为 [B, C, 1, 1]
+            nn.Conv2d(in_c, in_c // reduction, 1), # 降维
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_c // reduction, in_c, 1), # 升维
+            nn.Sigmoid()
         )
 
     def forward(self, x):
-        x = self.conv(x, self.conv_rf(x))
+        scale = self.se(x)
+        return x * scale
+
+class ECABlock(nn.Module):
+    def __init__(self, in_c, k_size=3):
+        super(ECABlock, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.conv = nn.Conv1d(1, 1, kernel_size=k_size, padding=k_size//2, bias=False)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        y = self.avg_pool(x)        # [B, C, 1, 1]
+        y = y.squeeze(-1).permute(0, 2, 1)  # [B, 1, C]
+        y = self.conv(y)                    # [B, 1, C]
+        y = self.sigmoid(y).permute(0, 2, 1).unsqueeze(-1)  # [B, C, 1, 1]
+        return x * y
+
+
+class DWConv(nn.Module):
+    def __init__(self, in_c, out_c, dropout=0., attention='se'):
+        super(DWConv, self).__init__()
+
+        self.dw_conv = nn.Conv2d(in_c*2, in_c*2, kernel_size=5, stride=2, padding=2, groups=in_c)
+        self.pw_conv = nn.Conv2d(in_c*2, out_c, kernel_size=1)
+
+        # 注意力模块选择
+        if attention == 'se':
+            self.attn = SEBlock(out_c)
+        elif attention == 'eca':
+            self.attn = ECABlock(out_c)
+        else:
+            self.attn = nn.Identity()
+
+        self.dropout = nn.Dropout(dropout)
+        self.norm = nn.BatchNorm2d(out_c)
+        self.relu = nn.ReLU(inplace=True)
+        self.pool = nn.AvgPool2d(kernel_size=2, stride=2)
+
+    def forward(self, x):
+        x = self.dw_conv(x)
+        x = self.pw_conv(x)
+        x = self.attn(x)
+        x = self.norm(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+        x= self.pool(x)
         return x
 
-def merge_batch_time(x):
-    # (N, C, D, H, W) → (N*D, C, H, W)
-    N, C, D, H, W = x.shape
-    return x.contiguous().view(N * D, C, H, W)
-
-def split_batch_time(x, N, D):
-    # (N*D, C, H, W) → (N, C, D, H, W)
-    C, H, W = x.shape[1:]
-    return x.contiguous().view(N, C, D, H, W)
-
-class TSDM(nn.Module):
-    def __init__(self, in_c=3, out_c=3, mode='TSDM'):
+class TSDM_Module(nn.Module):
+    def __init__(self, in_c=3, out_c=3, mode='WTS'):
         """
         mode: 'TSDM' or 'TSDMW'
         """
-        super(TSDM, self).__init__()
+        super(TSDM_Module, self).__init__()
         self.in_c = in_c
         self.out_c = out_c
         self.mode = mode
-        self.stem1 = TAdaConv(in_c, out_c)
-        # self.stem2 = TAda(in_c, out_c)
-        self.stem2 = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=2),
-            nn.BatchNorm2d(self.out_c),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        )
-        self.BN1 = nn.BatchNorm3d(self.out_c)
-        self.BN2 = nn.BatchNorm3d(self.out_c)
-        self.Relu = nn.ReLU(inplace=True)
+        self.stem = DWConv(in_c, out_c, 0.1)
 
     def compute_diff(self, x):
         N, C, D, H, W = x.shape
         if self.mode == 'CTS':
-            x1 = torch.cat([x[:, :C//2, :1, :, :], x[:, :C//2, :D-1, :, :]], dim=2)
-            x3 = torch.cat([x[:, C//2:, 1:, :, :], x[:, C//2:, D-1:, :, :]], dim=2)
+            x1 = torch.cat([x[:, :, :1, :, :], x[:, :, :D-1, :, :]], dim=2)
+            x3 = torch.cat([x[:, :, 1:, :, :], x[:, :, D-1:, :, :]], dim=2)
         elif self.mode == 'WTS':
-            x1 = torch.cat([x[:, :C//2, D-1:, :, :], x[:, :C//2, :D-1, :, :]], dim=2)
-            x3 = torch.cat([x[:, C//2:, 1:, :, :], x[:, C//2:, :1, :, :]], dim=2)
+            x1 = torch.cat([x[:, :, D-1:, :, :], x[:, :, :D-1, :, :]], dim=2)
+            x3 = torch.cat([x[:, :, 1:, :, :], x[:, :, :1, :, :]], dim=2)
         elif self.mode == 'PTS':
-            zero_pad1 = torch.zeros_like(x[:, :C // 2, :1, :, :])  # 生成全 0 张量
-            zero_pad2 = torch.zeros_like(x[:, C // 2:, :1, :, :])  # 确保和 x3 形状匹配
-            x1 = torch.cat([zero_pad1, x[:, :C // 2, :D-1, :, :]], dim=2)  # 用 0 进行填充
-            x3 = torch.cat([x[:, C//2:, 1:, :, :], zero_pad2], dim=2)
-        return torch.cat([x[:, :C//2, :, :, :] - x1, x3 - x[:, C//2:, :, :, :]], dim=1)
+            zero_pad1 = torch.zeros_like(x[:, :, :1, :, :])  # 生成全 0 张量
+            zero_pad2 = torch.zeros_like(x[:, :, :1, :, :])  # 确保和 x3 形状匹配
+            x1 = torch.cat([zero_pad1, x[:, :, :D-1, :, :]], dim=2)  # 用 0 进行填充
+            x3 = torch.cat([x[:, :, 1:, :, :], zero_pad2], dim=2)
+        return torch.cat([x - x1, x3 - x], dim=1)
 
     def forward(self, x):
         N, C, D, H, W = x.shape
-
-        # stem2: 2D conv over time slices
-        x = merge_batch_time(x) # (N*D, C, H, W)
-        x = self.stem2(x) # (N*D, C, H, W)
-        x = split_batch_time(x, N, D) # (N, C, D, H, W)
-
-        # compute diff features
-        x_diff = self.compute_diff(x.transpose(1, 2))  # (N, D, C, H, W) for compute_diff
-        x_diff = self.stem1(x_diff.transpose(1, 2))  # back to (N, C, D, H, W)
-
-        # fusion
-        x = self.Relu(self.BN1(x) + self.BN2(x_diff))
+        x_diff = self.compute_diff(x)
+        x = self.stem(x_diff.transpose(1, 2).contiguous().view(N*D, 6, H, W))
         return x
-
 
 class TPT_Block(nn.Module):
     def __init__(self, dim, depth, num_heads, t_patch, topk,
@@ -211,7 +157,7 @@ class TPT_Block(nn.Module):
         return x
 
 
-class RhythmFormer(nn.Module):
+class TSDMFormer(nn.Module):
 
     def __init__(
             self,
@@ -237,7 +183,7 @@ class RhythmFormer(nn.Module):
         self.stage_n = stage_n
 
         # self.Fusion_Stem = Fusion_Stem()
-        self.TSDM = TSDM(64,  64, 'WTS')
+        self.TSDM = TSDM_Module(3,  64, 'WTS')
         self.patch_embedding = nn.Conv3d(in_chans, embed_dim[0], kernel_size=(1, 4, 4), stride=(1, 4, 4))
         self.ConvBlockLast = nn.Conv1d(embed_dim[-1], 1, kernel_size=1, stride=1, padding=0)
 
@@ -271,10 +217,12 @@ class RhythmFormer(nn.Module):
 
     def forward(self, x):
         N, C, D, H, W = x.shape  # [N D 3 128 128]
-        # x = self.Fusion_Stem(x)  # [N*D 64 H/4 W/4]
+        # x = x.transpose(1, 2)
         x = self.TSDM(x)
-        # x = x.view(N, D, 64, H // 4, W // 4).permute(0, 2, 1, 3, 4)  # [N 64 D 32 32]
+        x = x.view(N, D, 64, H // 4, W // 4).permute(0, 2, 1, 3, 4)  # [N 64 D 32 32]
         x = self.patch_embedding(x)  # [N 64 D 8 8]
+        
+
         for i in range(3):
             x = self.stages[i](x)  # [N 64 D 8 8]
 
@@ -287,8 +235,10 @@ class RhythmFormer(nn.Module):
 
 if __name__ == '__main__':
     input = torch.randn(1, 3, 160, 128, 128) # (1, 3, 160, 128, 128))
-    net = RhythmFormer()
+    net = TSDMFormer()
+    # net = Fusion()
+    # net = TSDM(64, 64, 'WTS')
     flops, params = profile(net, (input,))
-    print('flops: %.2f M, params: %.2f M' % (flops / 1e9, params / 1e6))
+    print('flops: %.2f G, params: %.2f M' % (flops / 1e9, params / 1e6))
     # out = net(input)
     # print(out.shape)
