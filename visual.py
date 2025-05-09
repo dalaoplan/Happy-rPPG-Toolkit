@@ -69,7 +69,7 @@ def plot_wave_psd(pred, label, fps = 30, fig_path:str=f"result/Plots"):
     #plt.show()
     plt.close()
 
-    print("Plot wave over!!!")
+    # print("Plot wave over!!!")
 
 
 def plot_blandaltman(hr_pred, hr_label, fig_path:str = f"result/Plots"):
@@ -88,7 +88,7 @@ def plot_blandaltman(hr_pred, hr_label, fig_path:str = f"result/Plots"):
     plt.subplot(2, 1, 1)
     plt.scatter(hr_label, hr_pred, label='', color='#F0B5BF',
                 alpha=1, edgecolors='black', s=100)
-    plt.plot([45, 150], [45, 150], 'k--', alpha=0.7)  # y=x 参考线
+    plt.plot([45, 160], [45, 160], 'k--', alpha=0.7)  # y=x 参考线
     plt.xlabel('Ground Truth HR (bpm)', fontsize=14)
     plt.ylabel('Estimated HR (bpm)', fontsize=14)
 
@@ -135,7 +135,7 @@ def plot_blandaltman(hr_pred, hr_label, fig_path:str = f"result/Plots"):
     #plt.show()
     plt.close()
 
-    print("Plot blandaltman over!!!")
+    # print("Plot blandaltman over!!!")
 
 
 if __name__ == '__main__':

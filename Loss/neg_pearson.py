@@ -49,8 +49,8 @@ class NegPearsonLoss(nn.Module):
 
 if __name__ == '__main__':
     input = torch.randn(3, 160)
-    target = torch.randn((3, 160))
+    target = torch.randn((3, 158))
     net = NegPearsonLoss()
-    out = net(input, target)
+    out = net(input, target, 1, 30)
 
     print(out)

@@ -11,6 +11,12 @@ def select_model(model_name:str='PhysNet' ,len:int=160):
     elif model_name == 'RhythmFormer':
         from models.RhythmFormer import RhythmFormer
         model = RhythmFormer()
+    elif model_name == 'TSDMFormer':
+        from models.TSDMFormer import TSDMFormer
+        model = TSDMFormer()
+    elif model_name == 'TSDMFormer1':
+        from models.TSDMFormer1 import TSDMFormer1
+        model = TSDMFormer1()
     elif model_name == 'EfficientPhys':
         from models.EfficientPhys import EfficientPhys
         model = EfficientPhys()
@@ -35,10 +41,10 @@ def select_loss(loss_name:str='ftLoss', fs:int=30):
     if loss_name == 'RhythmFormer':
         from Loss.LossComputer import RhythmFormer_Loss
         Loss = RhythmFormer_Loss()
-    if loss_name == 'ftLoss':
+    elif loss_name == 'ftLoss':
         from Loss.ftLoss import MyLoss
         Loss = MyLoss(fs)
-    if loss_name == 'NegPearson':
+    elif loss_name == 'NegPearson':
         from Loss.neg_pearson import NegPearsonLoss
         Loss = NegPearsonLoss()
     else:

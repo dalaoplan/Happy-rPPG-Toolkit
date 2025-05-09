@@ -8,7 +8,7 @@ from torch.nn import functional as F
 import math
 from typing import Tuple, Union
 from timm.layers import trunc_normal_
-from models.base.video_bra import video_BiFormerBlock
+from base.video_bra import video_BiFormerBlock
 from thop import profile
 
 class Fusion_Stem(nn.Module):

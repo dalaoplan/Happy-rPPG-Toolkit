@@ -10,12 +10,51 @@ from model_selector import select_loss
 from post_process import calculate_metric_batch_video, calculate_metric_per_video ,calculate_metrics
 from visual import plot_wave_psd, plot_blandaltman
 
-def read_split_data(dataset_name: str = "UBFCrPPG", dataset_root = 'D:\\Dataset', Train_len: int = 160, seed: int = 42, scene:str = 'Raw', tag: str = 'intra'):
 
+def prepare_split_data(dataset_name: str, dataset_root='D:\\Dataset', train_len=160,
+                       seed=42, scene='Raw', tag='intra'):
+    """
+    自动判断是否已划分数据集，若无则生成，再加载划分文件。
+    """
+    def check_split_exists():
+        if tag == 'cross':
+            json_path = f"./datasetinfo/{tag}_{dataset_name}_scene{scene}_seed{seed}.json"
+            return os.path.exists(json_path)
+        elif tag == 'intra':
+            for fold_idx in range(5):
+                json_path = f"./datasetinfo/{tag}_{dataset_name}_5fold_fold{fold_idx}_scene{scene}_seed{seed}.json"
+                if not os.path.exists(json_path):
+                    return False
+            return True
+        else:
+            raise ValueError(f"tag must be 'intra' or 'cross', but got: {tag}")
+
+    if not check_split_exists():
+        print("[未发现数据集划分文件] 现在开始生成...")
+        generate_split_data(dataset_name=dataset_name,
+                            dataset_root=dataset_root,
+                            seed=seed,
+                            scene=scene,
+                            tag=tag)
+    else:
+        print("[检测到已有数据集划分文件] 将直接加载")
+
+    return load_split_data(dataset_name=dataset_name,
+                           scene=scene,
+                           seed=seed,
+                           tag=tag,
+                           train_len=train_len)
+
+
+def generate_split_data(dataset_name: str, dataset_root='D:\\Dataset',
+                        seed=42, scene='Raw', tag='intra'):
+    """
+    如果划分文件不存在，则进行划分并保存 JSON 文件。
+    """
     data_root = os.path.join(dataset_root, dataset_name)
     assert os.path.exists(data_root), f"dataset root: {data_root} does not exist."
 
-    # 加载并排序文件路径
+# 加载并排序文件路径
     if dataset_name == 'UBFCrPPG':
         files = sorted([f for f in os.listdir(data_root) if f.endswith(".h5")],
                        key=lambda x: int(x.split(".")[0]))
@@ -60,27 +99,18 @@ def read_split_data(dataset_name: str = "UBFCrPPG", dataset_root = 'D:\\Dataset'
 
         if scene == 'R':
             files = rest_files
-            print(f"静止状态样本个数: {len(files)}")
-
         elif scene == 'E':
             files = exercise_files
-            print(f"\n运动状态样本个数: {len(files)}")
-
         elif scene == 'FIFP':
             files = scene_data[scene]
-            print(f"\n光强固定且位置固定: {len(files)}")
         elif scene == 'VIFP':
             files = scene_data[scene]
-            print(f"\n光强变化且位置固定: {len(files)}")
         elif scene == 'FIVP':
             files = scene_data[scene]
-            print(f"\n光强固定且位置变化: {len(files)}")
         elif scene == 'VIVP':
             files = scene_data[scene]
-            print(f"\n光强变化且位置变化: {len(files)}")
         elif scene == 'Raw':
             files = [f for f in os.listdir(data_root) if f.endswith(".h5")]
-            print(f"\n所有数据: {len(files)}")
         else:
             raise ValueError(f"Unknown scene: {scene}")
 
@@ -88,42 +118,29 @@ def read_split_data(dataset_name: str = "UBFCrPPG", dataset_root = 'D:\\Dataset'
             key=lambda x: (int(x.split("_")[0][1:]), int(x.split("_")[1].split(".")[0]))
         )
 
-    file_paths = [os.path.join(data_root, f) for f in files]
-    print(f'all of dataset num: {len(file_paths)}')
+    file_paths = [os.path.join(data_root, f) for f in files]  #TODO debug
+    print(f'所有数据数量: {len(file_paths)}')
+    os.makedirs("./datasetinfo/", exist_ok=True)
 
     if tag == 'cross':
-        json_path = f"./dataconfig/{tag}_{dataset_name}_scene{scene}_seed{seed}.json"
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump({
-                "val_len": len(file_paths),
-                "val": file_paths
-            }, f, indent=4)
-        print(f'val num: {len(file_paths)}')
-        return file_paths
+        json_path = f"./datasetinfo/{tag}_{dataset_name}_scene{scene}_seed{seed}.json"
+        if not os.path.exists(json_path):
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "val_len": len(file_paths),
+                    "val": file_paths
+                }, f, indent=4)
+            print(f"[生成] 跨数据集划分文件: {json_path}")
+
     elif tag == 'intra':
-
-        # 设置fps和video_len
-        fs, video_len = get_dataset_info(dataset_name)
-
-        num_repeat = np.round(video_len / (Train_len / fs)).astype(int)
-
-        # 5折划分
         kf = KFold(n_splits=5, shuffle=True, random_state=seed)
         splits = list(kf.split(file_paths))
-
-        all_folds = []
-        os.makedirs("./dataconfig/", exist_ok=True)
 
         for fold_idx, (train_idx, val_idx) in enumerate(splits):
             train_set = [file_paths[i] for i in train_idx]
             val_set = [file_paths[i] for i in val_idx]
 
-            train_set_expanded = train_set * num_repeat
-
-            all_folds.append((train_set_expanded, val_set))
-
-            # 保存配置文件
-            json_path = f"./dataconfig/{tag}_{dataset_name}_5fold_fold{fold_idx}_scene{scene}_seed{seed}.json"
+            json_path = f"./datasetinfo/{tag}_{dataset_name}_5fold_fold{fold_idx}_scene{scene}_seed{seed}.json"
             with open(json_path, "w", encoding="utf-8") as f:
                 json.dump({
                     "fold_index": fold_idx,
@@ -132,15 +149,42 @@ def read_split_data(dataset_name: str = "UBFCrPPG", dataset_root = 'D:\\Dataset'
                     "val_len": len(val_set),
                     "val": val_set
                 }, f, indent=4)
-        print(f'train num: {len(train_set)}, val num: {len(val_set)}')
+            print(f"[生成] 第{fold_idx}折划分文件: {json_path}")
+    else:
+        raise ValueError(f"tag must be 'intra' or 'cross', but got: {tag}")
+
+def load_split_data(dataset_name: str, scene='Raw', seed=42, tag='intra', train_len=160):
+    """
+    加载已划分好的数据集文件。
+    """
+    if tag == 'cross':
+        json_path = f"./datasetinfo/{tag}_{dataset_name}_scene{scene}_seed{seed}.json"
+        assert os.path.exists(json_path), f"{json_path} not found!"
+        with open(json_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        return config["val"]
+
+    if tag == 'intra':
+        fs, video_len = get_dataset_info(dataset_name)
+        num_repeat = np.round(video_len / (train_len / fs)).astype(int)
+        all_folds=[]
+        for fold_idx in range(5):
+            json_path = f"./datasetinfo/{tag}_{dataset_name}_5fold_fold{fold_idx}_scene{scene}_seed{seed}.json"
+            with open(json_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+                train_set = config["train"]
+                val_set = config["val"]
+                # ★★★ 训练集需要展开 ★★★
+                train_set_expanded = train_set * num_repeat
+                all_folds.append((train_set_expanded, val_set))
         return all_folds
     else:
-        raise ValueError(f"tag only intra or cross, now tag:{tag}")
+        raise ValueError(f"tag must be 'intra' or 'cross', but got: {tag}")
 
 
 def get_dataset_info(dataset_name):
     """
-    根据数据集名称返回该数据集的采样率 fs 和视频长度 video_len（单位为秒）
+    根据数据集名称返回该数据集的采样率 fs 和视频长度 video_len(单位为秒)
 
     参数:
         dataset_name (str): 数据集名称，比如 'PURE', 'UBFC-rPPG', 'DCLN', 等等
@@ -186,7 +230,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, fs, loss_name)
     sample_num = 0
     data_loader = tqdm(data_loader, file=sys.stdout)
     for step, data in enumerate(data_loader):
-        images, labels = data
+        images, labels, filenames  = data
         sample_num += images.shape[0]
         pred = model(images.to(device))
 
@@ -240,11 +284,11 @@ def evaluate(model, data_loader, device, foldidx, args, fs, plot_path):
     data_loader = tqdm(data_loader, file=sys.stdout)
     val_len = args.val_len * fs
     for step, data in enumerate(data_loader):
-        images, labels = data  # images:[B,C,T,H,W], T:[B,T]
+        images, labels, filenames = data  # images:[B,C,T,H,W], T:[B,T]
         num_repeat = np.floor(images.shape[2] / val_len).astype(int)  # 计算 num_batches
 
-        # pred_all = []
-        # label_all = []
+        pred_all = []
+        label_all = []
 
         for i in range(num_repeat):
 
@@ -256,13 +300,13 @@ def evaluate(model, data_loader, device, foldidx, args, fs, plot_path):
             pred_np = pred.detach().cpu().numpy()
             label_np = label_window.detach().cpu().numpy()
 
-            if args.plot in ["wave", "both"]:
-                fig_name = f'wave_{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_{args.val_dataset}_scene{args.scene[1]}_fold{foldidx}_seed{args.seed}_aug{args.aug}_{step}_{i}'
-                fig_path = os.path.join(plot_path, fig_name)
-                plot_wave_psd(pred_np, label_np, fs, fig_path)
+            # if args.plot in ["wave", "both"]:
+            #     fig_name = f'wave_{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_{args.val_dataset}_scene{args.scene[1]}_fold{foldidx}_seed{args.seed}_aug{args.aug}_{step}_{i}'
+            #     fig_path = os.path.join(plot_path, fig_name)
+            #     plot_wave_psd(pred_np, label_np, fs, fig_path)
 
-            # pred_all.append(pred_np)
-            # label_all.append(label_np)
+            pred_all.append(pred_np)
+            label_all.append(label_np)
 
             hr_pred, hr_label, snr, r = calculate_metric_per_video(pred_np, label_np, fs,
                                                                    hr_method=args.hr_method)
@@ -272,20 +316,100 @@ def evaluate(model, data_loader, device, foldidx, args, fs, plot_path):
             snr_all.append(snr)
             r_all.append(r)
 
-        # pred_all = np.array(pred_all)
-        # label_all = np.array(label_all)
+        pred_all = np.array(pred_all).flatten()
+        label_all = np.array(label_all).flatten()
+
+        signal_save_path = args.signal_path + f"/{args.model_name}/{args.train_dataset}_scene{args.scene[0]}_{args.val_dataset}_scene{args.scene[1]}_seed{args.seed}_aug{args.aug}"
+        os.makedirs(signal_save_path, exist_ok=True)
+        np.savez(
+            os.path.join(signal_save_path, f'signal_{filenames[0]}.npz'),
+            pred=pred_all,
+            label=label_all
+        )   
+
 
         data_loader.desc = 'val on {}'.format(step)
 
-    if args.plot in ["blandaltman", "both"]:
-        fig_name = f'blandaltman_{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_{args.val_dataset}_scene{args.scene[1]}_fold{foldidx}__seed{args.seed}_aug{args.aug}_{val_len}'
-        fig_path = os.path.join(plot_path, fig_name)
-
-        plot_blandaltman(hr_pred_all, hr_label_all, fig_path)
+    np.savez(
+        os.path.join(signal_save_path, f'hr_fold{foldidx}.npz'),
+        hr_pred=hr_pred_all,
+        hr_label=hr_label_all
+    )  
+    # if args.plot in ["blandaltman", "both"]:
+    #     fig_name = f'blandaltman_{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_{args.val_dataset}_scene{args.scene[1]}_fold{foldidx}__seed{args.seed}_aug{args.aug}_{val_len}'
+    #     fig_path = os.path.join(plot_path, fig_name)
+    #     plot_blandaltman(hr_pred_all, hr_label_all, fig_path)
 
     metrics_dict = calculate_metrics(hr_pred_all, hr_label_all, snr_all, r_all)
 
     return metrics_dict
+
+# TODO 完成可视化结果图设计
+def visualize_results(signal_dir, plot_path, args, max_plot_num=10, plot_length=None):
+    """
+    读取所有fold的预测心率和真实心率数据,并生成相应的可视化图
+    :param fold_dir: 存储所有fold结果的文件夹路径
+    :param plot_path: 可视化结果存储路径
+    :param plot_length: wave可视化的长度
+    :param max_plot_num: 可视化wave的个数
+    """
+    fs, video_len = get_dataset_info(args.val_dataset)
+    val_len = fs * args.val_len
+    plot_length = val_len
+
+    # 如果选择Bland-Altman图，则调用plot_blandaltman函数
+    if args.plot in "blandaltman, all":
+        hr_pred_all = []
+        hr_label_all = []
+        
+        # 遍历所有fold的结果文件
+        for foldidx in range(5):  # 假设5折交叉验证
+            npz_file = os.path.join(signal_dir, f'hr_fold{foldidx}.npz')  # 请确保路径和文件名的正确性
+            if os.path.exists(npz_file):
+                data = np.load(npz_file)
+                hr_pred = data['hr_pred']
+                hr_label = data['hr_label']
+
+                # 将预测值和真实值加入到列表中
+                hr_pred_all.extend(hr_pred.flatten())  # 展平并追加
+                hr_label_all.extend(hr_label.flatten())  # 展平并追加
+        fig_name = f'blandaltman_{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_{args.val_dataset}_scene{args.scene[1]}_seed{args.seed}_aug{args.aug}_vallen{val_len}'
+        plot_blandaltman(hr_pred_all, hr_label_all, fig_path=os.path.join(plot_path, fig_name))
+        print("Bland-Altman plot generated for all folds!")
+        
+    # TODO 完善保存的文件名
+    if args.plot in "wave, all":
+        file_list = sorted([
+            f for f in os.listdir(signal_dir)
+            if f.startswith("signal") and f.endswith(".npz")
+        ])
+
+        for filename in file_list[:max_plot_num]:
+            filepath = os.path.join(signal_dir, filename)
+            data = np.load(filepath)
+            pred = data['pred']
+            label = data['label']
+
+            # 对 pred 插值，长度对齐
+            if len(pred) != len(label):
+                x_pred = np.linspace(0, 1, len(pred))
+                x_label = np.linspace(0, 1, len(label))
+                pred = np.interp(x_label, x_pred, pred)
+
+            # 截断到指定长度
+            if plot_length is not None:
+                pred = pred[:plot_length]
+                label = label[:plot_length]
+
+            sample_name = os.path.splitext(filename)[0]
+            sample_id = sample_name.split('_')[1]  # 得到 '1'
+            save_name = f'wave_{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_{args.val_dataset}_scene{args.scene[1]}_seed{args.seed}_aug{args.aug}_vallen{val_len}_{sample_id}'
+
+            fig_path = os.path.join(plot_path, save_name)
+            plot_wave_psd(pred, label, fps=fs, fig_path=fig_path)
+
+        print(f"Wave plot generated for {min(max_plot_num, len(file_list))} samples.")
+
 
 def summarize_kfold_results(fold_metrics):
     metric_names = ["MAE", "RMSE", "MAPE", "Pearson", "SNR", "MACC"]
@@ -313,10 +437,7 @@ def summarize_kfold_results(fold_metrics):
     return final_metrics
 
 
-
-
-
 if __name__ == '__main__':
-    flods = read_split_data('DLCN',  seed=42, scene='Raw', tag='intra')
+    flods = prepare_split_data('DLCN',  seed=42, scene='Raw', tag='intra')
 
 

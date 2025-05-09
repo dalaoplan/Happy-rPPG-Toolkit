@@ -45,7 +45,7 @@ class RhythmFormer_Loss(nn.Module):
     def __init__(self):
         super(RhythmFormer_Loss,self).__init__()
         self.criterion_Pearson = Neg_Pearson()
-    def forward(self, pred_ppg, labels , epoch , FS , diff_flag):
+    def forward(self, pred_ppg, labels , epoch , FS , diff_flag=True):
         loss_time = self.criterion_Pearson(pred_ppg.view(1,-1) , labels.view(1,-1))
         loss_CE , loss_distribution_kl = TorchLossComputer.Frequency_loss(pred_ppg.squeeze(-1),  labels.squeeze(-1), diff_flag=diff_flag, Fs=FS, std=3.0)
         loss_hr = TorchLossComputer.HR_loss(pred_ppg.squeeze(-1),  labels.squeeze(-1), diff_flag=diff_flag, Fs=FS, std=3.0)
@@ -165,11 +165,11 @@ class TorchLossComputer(object):
         hr_pred, hr_gt = calculate_hr(inputs.detach().cpu(), target.detach().cpu() , diff_flag = diff_flag , fs=Fs)
         inputs = inputs.view(1, -1)
         target = target.view(1, -1)
-        bpm_range = torch.arange(45, 150, dtype=torch.float).to(torch.device('cuda'))
+        bpm_range = torch.arange(45, 160, dtype=torch.float).to(torch.device('cuda'))
         ca = TorchLossComputer.complex_absolute(inputs, Fs, bpm_range)
         sa = ca/torch.sum(ca)
 
-        target_distribution = [normal_sampling(int(hr_gt), i, std) for i in range(45, 150)]
+        target_distribution = [normal_sampling(int(hr_gt), i, std) for i in range(45, 160)]
         target_distribution = [i if i > 1e-15 else 1e-15 for i in target_distribution]
         target_distribution = torch.Tensor(target_distribution).to(torch.device('cuda'))
 
@@ -177,15 +177,24 @@ class TorchLossComputer(object):
         return F.cross_entropy(ca, hr_gt) , kl_loss(sa , target_distribution)
 
     @staticmethod
-    def HR_loss(inputs, target,  diff_flag , Fs, std):
-        psd_pred, psd_gt = calculate_psd(inputs.detach().cpu(), target.detach().cpu() , diff_flag = diff_flag , fs=Fs)
+    def HR_loss(inputs, target, diff_flag, Fs, std):
+        psd_pred, psd_gt = calculate_psd(inputs.detach().cpu(), target.detach().cpu(), diff_flag=diff_flag, fs=Fs)
+        
+        # Ensure psd_pred is a numpy array if it's a tuple
+        if isinstance(psd_pred, tuple):
+            psd_pred = np.array(psd_pred)
+        if isinstance(psd_gt, tuple):
+            psd_gt = np.array(psd_gt)
+
         pred_distribution = [normal_sampling(np.argmax(psd_pred), i, std) for i in range(psd_pred.size)]
         pred_distribution = [i if i > 1e-15 else 1e-15 for i in pred_distribution]
         pred_distribution = torch.Tensor(pred_distribution).to(torch.device('cuda'))
+
         target_distribution = [normal_sampling(np.argmax(psd_gt), i, std) for i in range(psd_gt.size)]
         target_distribution = [i if i > 1e-15 else 1e-15 for i in target_distribution]
         target_distribution = torch.Tensor(target_distribution).to(torch.device('cuda'))
-        return kl_loss(pred_distribution , target_distribution)
+
+        return kl_loss(pred_distribution, target_distribution)
 
 if __name__ == '__main__':
     FS = 30  # 采样率 (Hz)
