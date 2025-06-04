@@ -62,7 +62,7 @@ def get_dataset_info(dataset_name):
 def read_split_data(test_dataset_name: str = "UBFCrPPG", group: str = 'R'):
 
 
-    test_data_root = f"D:\\Dataset\\{test_dataset_name}"
+    test_data_root = f"E:\datasets_h5\{test_dataset_name}"
 
     assert os.path.exists(test_data_root), "dataset root: {} does not exist.".format(test_data_root)
 

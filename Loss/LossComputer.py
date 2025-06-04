@@ -203,8 +203,8 @@ if __name__ == '__main__':
 
     # 生成测试数据
     torch.manual_seed(42)
-    fake_pred_bvp = torch.rand(2, 120, dtype=torch.float32).cuda()  # 模拟预测的 BVP 信号
-    fake_gt_bvp = torch.rand(2, 120, dtype=torch.float32).cuda()  # 模拟真实 BVP 信号
+    fake_pred_bvp = torch.rand(4, 160, dtype=torch.float32).cuda()  # 模拟预测的 BVP 信号
+    fake_gt_bvp = torch.rand(4, 160, dtype=torch.float32).cuda()  # 模拟真实 BVP 信号
 
     # 初始化损失函数
     criterion = RhythmFormer_Loss().cuda()

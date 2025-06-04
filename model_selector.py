@@ -11,12 +11,9 @@ def select_model(model_name:str='PhysNet' ,len:int=160):
     elif model_name == 'RhythmFormer':
         from models.RhythmFormer import RhythmFormer
         model = RhythmFormer()
-    elif model_name == 'TSDMFormer':
-        from models.TSDMFormer import TSDMFormer
-        model = TSDMFormer()
-    elif model_name == 'TSDMFormer1':
-        from models.TSDMFormer1 import TSDMFormer1
-        model = TSDMFormer1()
+    elif model_name == 'iBVPNet':
+        from models.iBVPNet import iBVPNet
+        model = iBVPNet(frames=len)
     elif model_name == 'EfficientPhys':
         from models.EfficientPhys import EfficientPhys
         model = EfficientPhys()
@@ -46,7 +43,7 @@ def select_loss(loss_name:str='ftLoss', fs:int=30):
         Loss = MyLoss(fs)
     elif loss_name == 'NegPearson':
         from Loss.neg_pearson import NegPearsonLoss
-        Loss = NegPearsonLoss()
+        Loss = NegPearsonLoss(fs=fs)
     else:
         print('Could not find loss specified.')
         sys.exit(-1)

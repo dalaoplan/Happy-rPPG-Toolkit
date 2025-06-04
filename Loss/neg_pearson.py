@@ -36,10 +36,11 @@ def neg_Pearson_Loss(predictions, targets):
 
 
 class NegPearsonLoss(nn.Module):
-    def __init__(self):
+    def __init__(self, fs):
         super(NegPearsonLoss, self).__init__()
+        self.fs = fs
 
-    def forward(self, predictions, targets, epoch, fs):
+    def forward(self, predictions, targets, epoch):
         if len(predictions.shape) == 1:
             predictions = predictions.view(1, -1)
         if len(targets.shape) == 1:

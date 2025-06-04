@@ -243,7 +243,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, fs, loss_name)
         # accu_MACC += MACC.sum()
 
 
-        loss = loss_function(pred, labels.to(device), epoch, fs)
+        loss = loss_function(pred, labels.to(device), epoch)
         loss.backward()
 
         # 打印反向传播的参数

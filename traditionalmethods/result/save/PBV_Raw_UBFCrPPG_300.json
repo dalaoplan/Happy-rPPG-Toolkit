@@ -1,0 +1,34 @@
+{
+    "method_name": "PBV",
+    "scene": "Raw",
+    "test_dataset": "UBFCrPPG",
+    "test_len": 300,
+    "visualization_path": "result/Plots",
+    "test_num_samples": 42,
+    "metrics": {
+        "MAE": {
+            "value": 26.63225000185969,
+            "std": 1.741854200606589
+        },
+        "RMSE": {
+            "value": 37.99366138916982,
+            "std": 10.908793313019181
+        },
+        "MAPE": {
+            "value": 24.82396495597408,
+            "std": 1.5189754871885037
+        },
+        "Pearson": {
+            "value": 0.05966731842007903,
+            "std": 0.06443471538155748
+        },
+        "SNR": {
+            "value": -11.920454733561241,
+            "std": 0.7658964086253733
+        },
+        "MACC": {
+            "value": 0.5036246990548549,
+            "std": 0.011924419501470222
+        }
+    }
+}

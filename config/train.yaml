@@ -1,7 +1,7 @@
 # train.yaml
 experiment: train
-train_dataset: PURE       # Name of the training dataset
-val_dataset: PURE         # Name of the validation dataset
+train_dataset: UBFCrPPG       # Name of the training dataset
+val_dataset: UBFCrPPG         # Name of the validation dataset
 train_len: 160                # Length of training data (in frames)
 val_len: 10                   # Length of validation data (in seconds)
 epochs: 20                    # Number of training epochs
@@ -11,12 +11,12 @@ nw: 0                         # Number of workers for data loading (recommend >0
 lr: 9e-3                      # Initial learning rate
 lrf: 0.01                     # Final learning rate factor (for learning rate decay)
 optimizer: adamw              # Optimizer type, e.g., adam, adamw, sgd
-model_name: TSDMFormer1           # Model architecture name
+model_name: iBVPNet           # Model architecture name
 weight_path: best             # Path to model weights; 'best' for best weights, 'last' for latest
 device: cuda:0                # Device to run on (e.g., cuda:0, cuda:0,1 or cpu)
 aug: TH                       # Data augmentation method tag
 seed: 42                      # Random seed for reproducibility
-loss_name: RhythmFormer         # Loss function name
+loss_name: NegPearson         # Loss function name
 plot: blandaltman             # Visualization type: wave, blandaltman, or both
 plot_path: result/Plots       # Path to save visualization figures
 dataset_root: D:/Dataset      # Dataset path

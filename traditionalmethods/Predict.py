@@ -139,14 +139,14 @@ def test(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--test-dataset', type=str, default='DLCN', help='test dataset name')
-    parser.add_argument('--scene', type=str, default='FIFP', help='test scene, R: Relax, E: Exercise, FIFP, VIFP, FIVP, VIVP')
+    parser.add_argument('--test-dataset', type=str, default='UBFCPhys', help='test dataset name')
+    parser.add_argument('--scene', type=str, default='Raw', help='test scene, R: Relax, E: Exercise, FIFP, VIFP, FIVP, VIVP')
     parser.add_argument('--test-len', type=int, default=10, help='test length, 10 second')
     parser.add_argument('--fps', type=int, default=30)
     parser.add_argument('--nw', type=int, default=0, help='num_workers')
     parser.add_argument('--hr_method', type=str, default='FFT', help='=calculate hr use FFT or Peak')
     parser.add_argument('--plot', type=str, default='blandaltman', help='wave: only plot wave fig., blandaltman: only plot blandaltman fig., both: plot two fig.')
-    parser.add_argument('--method-name', default='GREEN', help='create model name')
+    parser.add_argument('--method-name', default='CHROME', help='create model name')
 
 
     opt = parser.parse_args()
