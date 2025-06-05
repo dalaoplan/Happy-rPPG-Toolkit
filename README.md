@@ -9,9 +9,9 @@
 ## 📌 Introduction
 TODO
 
-## 🧠 Dataset: DCLN
+## 🧠 Dataset: DLCN
 
-**DCLN (Dynamic-lighting Conditions at Night)** is a dataset collected specifically for rPPG signal evaluation under complex lighting environments.
+**DLCN (Dynamic-lighting Conditions at Night)** is a dataset collected specifically for rPPG signal evaluation under complex lighting environments.
 - **98 volunteers**, each recorded under 4 lighting setups:
   1. Fixed intensity and fixed position
   2. Varying intensity and fixed position
@@ -77,7 +77,7 @@ python main.py --config ./config/inference.yaml
 
 
 ## 📊 Evaluation Results
-Performance of different models on DCLN dataset:
+Performance of different models on DLCN dataset:
 TODO
 
 
@@ -96,9 +96,12 @@ TODO
 For issues, suggestions, or collaborations:
 📧 Email: zhipengli@stu.cqut.edu.cn
 
+## 💐 Acknowledgement
+This work is primarily based on [rPPG-Toolbox](https://github.com/ubicomplab/rPPG-Toolbox), an excellent open-source repository for remote photoplethysmography (rPPG) research. In addition, we would like to express our sincere gratitude to the authors of [ContrastPhys](https://github.com/zhaodongsun/contrast-phys), [SiNC-rPPG](https://github.com/CVRL/SiNC-rPPG), [RhythmFormer](https://github.com/zizheng-guo/RhythmFormer), and TemporalNormalization for their outstanding open-source contributions, which have greatly inspired and supported our work.
+
 
 ##  📚 Citation
-If you use this toolkit or the DCLN dataset, please cite:
+If you use this toolkit or the DLCN dataset, please cite:
 ````
 @article{paper,
   title={Happy-rPPGToolkit},

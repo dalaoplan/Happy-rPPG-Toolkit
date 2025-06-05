@@ -1,3 +1,6 @@
+"""
+https://github.com/CVRL/SiNC-rPPG
+"""
 import torch
 import torch.nn as nn
 

@@ -1,5 +1,6 @@
 """
-RhythmFormer:Extracting rPPG Signals Based on Hierarchical Temporal Periodic Transformer
+RhythmFormer: Extracting Patterned rPPG Signals based on Periodic Sparse Attention
+https://github.com/zizheng-guo/RhythmFormer
 """
 from typing import Optional
 import torch
