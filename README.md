@@ -97,7 +97,7 @@ For issues, suggestions, or collaborations:
 📧 Email: zhipengli@stu.cqut.edu.cn
 
 ## 💐 Acknowledgement
-This work is primarily based on [rPPG-Toolbox](https://github.com/ubicomplab/rPPG-Toolbox), an excellent open-source repository for remote photoplethysmography (rPPG) research. In addition, we would like to express our sincere gratitude to the authors of [ContrastPhys](https://github.com/zhaodongsun/contrast-phys), [SiNC-rPPG](https://github.com/CVRL/SiNC-rPPG), [RhythmFormer](https://github.com/zizheng-guo/RhythmFormer), and TemporalNormalization for their outstanding open-source contributions, which have greatly inspired and supported our work.
+This work is primarily based on [rPPG-Toolbox](https://github.com/ubicomplab/rPPG-Toolbox), an excellent open-source repository for remote photoplethysmography (rPPG) research. In addition, we would like to express our sincere gratitude to the authors of [ContrastPhys](https://github.com/zhaodongsun/contrast-phys), [SiNC-rPPG](https://github.com/CVRL/SiNC-rPPG), [RhythmFormer](https://github.com/zizheng-guo/RhythmFormer), and [TemporalNormalization](https://github.com/KegangWangCCNU/TemporalNormalization) for their outstanding open-source contributions, which have greatly inspired and supported our work.
 
 
 ##  📚 Citation
