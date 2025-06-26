@@ -11,7 +11,7 @@ from post_process import calculate_metric_batch_video, calculate_metric_per_vide
 from visual import plot_wave_psd, plot_blandaltman
 
 
-def prepare_split_data(dataset_name: str, dataset_root='D:\\Dataset', train_len=160,
+def prepare_split_data(dataset_name: str, dataset_root='D:\\Dataset', frame_len=160,
                        seed=42, scene='Raw', tag='intra'):
     """
     自动判断是否已划分数据集，若无则生成，再加载划分文件。
@@ -43,7 +43,7 @@ def prepare_split_data(dataset_name: str, dataset_root='D:\\Dataset', train_len=
                            scene=scene,
                            seed=seed,
                            tag=tag,
-                           train_len=train_len)
+                           frame_len=frame_len)
 
 
 def generate_split_data(dataset_name: str, dataset_root='D:\\Dataset',
@@ -144,7 +144,7 @@ def generate_split_data(dataset_name: str, dataset_root='D:\\Dataset',
             with open(json_path, "w", encoding="utf-8") as f:
                 json.dump({
                     "fold_index": fold_idx,
-                    "train_len": len(train_set),
+                    "frame_len": len(train_set),
                     "train": train_set,
                     "val_len": len(val_set),
                     "val": val_set
@@ -153,7 +153,7 @@ def generate_split_data(dataset_name: str, dataset_root='D:\\Dataset',
     else:
         raise ValueError(f"tag must be 'intra' or 'cross', but got: {tag}")
 
-def load_split_data(dataset_name: str, scene='Raw', seed=42, tag='intra', train_len=160):
+def load_split_data(dataset_name: str, scene='Raw', seed=42, tag='intra', frame_len=160):
     """
     加载已划分好的数据集文件。
     """
@@ -166,7 +166,7 @@ def load_split_data(dataset_name: str, scene='Raw', seed=42, tag='intra', train_
 
     if tag == 'intra':
         fs, video_len = get_dataset_info(dataset_name)
-        num_repeat = np.round(video_len / (train_len / fs)).astype(int)
+        num_repeat = np.round(video_len / (frame_len / fs)).astype(int)
         all_folds=[]
         for fold_idx in range(5):
             json_path = f"./datasetinfo/{tag}_{dataset_name}_5fold_fold{fold_idx}_scene{scene}_seed{seed}.json"
@@ -174,7 +174,7 @@ def load_split_data(dataset_name: str, scene='Raw', seed=42, tag='intra', train_
                 config = json.load(f)
                 train_set = config["train"]
                 val_set = config["val"]
-                # ★★★ 训练集需要展开 ★★★
+                # 取num_repeat次样本
                 train_set_expanded = train_set * num_repeat
                 all_folds.append((train_set_expanded, val_set))
         return all_folds
@@ -282,28 +282,24 @@ def evaluate(model, data_loader, device, foldidx, args, fs, plot_path):
     r_all = []
 
     data_loader = tqdm(data_loader, file=sys.stdout)
-    val_len = args.val_len * fs
+    val_len = args.val_len
     for step, data in enumerate(data_loader):
         images, labels, filenames = data  # images:[B,C,T,H,W], T:[B,T]
-        num_repeat = np.floor(images.shape[2] / val_len).astype(int)  # 计算 num_batches
 
         pred_all = []
         label_all = []
 
-        for i in range(num_repeat):
+        images = images.squeeze(0) # [num_repeat,C,T,H,W]
+        labels = labels.squeeze(0)
 
-            img_window = images[:, :, i * val_len:(i + 1) * val_len, :, :]
-            label_window = labels[:, i * val_len:(i + 1) * val_len]
+        for i in range(images.shape[0]):
+            img_window = images[i].unsqueeze(0)
+            label_window = labels[i].unsqueeze(0)
 
             pred = model(img_window.to(device))
 
             pred_np = pred.detach().cpu().numpy()
             label_np = label_window.detach().cpu().numpy()
-
-            # if args.plot in ["wave", "both"]:
-            #     fig_name = f'wave_{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_{args.val_dataset}_scene{args.scene[1]}_fold{foldidx}_seed{args.seed}_aug{args.aug}_{step}_{i}'
-            #     fig_path = os.path.join(plot_path, fig_name)
-            #     plot_wave_psd(pred_np, label_np, fs, fig_path)
 
             pred_all.append(pred_np)
             label_all.append(label_np)
@@ -335,10 +331,6 @@ def evaluate(model, data_loader, device, foldidx, args, fs, plot_path):
         hr_pred=hr_pred_all,
         hr_label=hr_label_all
     )  
-    # if args.plot in ["blandaltman", "both"]:
-    #     fig_name = f'blandaltman_{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_{args.val_dataset}_scene{args.scene[1]}_fold{foldidx}__seed{args.seed}_aug{args.aug}_{val_len}'
-    #     fig_path = os.path.join(plot_path, fig_name)
-    #     plot_blandaltman(hr_pred_all, hr_label_all, fig_path)
 
     metrics_dict = calculate_metrics(hr_pred_all, hr_label_all, snr_all, r_all)
 
@@ -354,7 +346,7 @@ def visualize_results(signal_dir, plot_path, args, max_plot_num=10, plot_length=
     :param max_plot_num: 可视化wave的个数
     """
     fs, video_len = get_dataset_info(args.val_dataset)
-    val_len = fs * args.val_len
+    val_len = args.val_len
     plot_length = val_len
 
     # 如果选择Bland-Altman图，则调用plot_blandaltman函数

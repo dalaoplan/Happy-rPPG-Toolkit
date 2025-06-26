@@ -43,7 +43,7 @@ def main(args):
         print('Inference!')
         print(f'{args.model_name} train on {args.train_dataset} scene {args.scene[0]}, val on {args.val_dataset} scene {args.scene[1]}')
 
-        create_model = select_model(args.model_name, len=args.train_len * val_fs)
+        create_model = select_model(args.model_name, len=args.train_len)
         model = create_model.to(device)
 
         fold_metrics = []
@@ -56,7 +56,7 @@ def main(args):
                 # 数据集内验证：只取当前 fold 的 val 集
                 val_list_all = prepare_split_data(dataset_name=args.val_dataset,
                                         dataset_root=args.dataset_root,
-                                        train_len=args.val_len,
+                                        frame_len=args.val_len,
                                         seed=args.seed,
                                         scene=args.scene[1],
                                         tag='intra')  # val 表示数据集内验证的验证集
@@ -65,7 +65,7 @@ def main(args):
                 # 跨数据集验证：直接取整个验证集
                 val_list = prepare_split_data(dataset_name=args.val_dataset,
                                         dataset_root=args.dataset_root,
-                                        train_len=args.val_len,
+                                        frame_len=args.val_len,
                                         seed=args.seed,
                                         scene=args.scene[1],
                                         tag='cross')  # cross 表示跨数据集测试
@@ -106,7 +106,7 @@ def main(args):
 
             # 保存 JSON
             save_path = os.path.join(matrix_dir,
-                                    f"{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_{args.val_dataset}_scene{args.scene[1]}_{args.seed}_{args.aug}_{args.val_len * val_fs}.json")
+                                    f"{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_{args.val_dataset}_scene{args.scene[1]}_{args.seed}_{args.aug}_{args.val_len}.json")
             if os.path.exists(save_path):
                 with open(save_path, "r") as f:
                     saved_data = json.load(f)
@@ -118,7 +118,7 @@ def main(args):
                     "train_scene": args.scene[0],
                     "val_dataset": args.val_dataset,
                     "val_scene": args.scene[1],
-                    "val_len": args.val_len * val_fs,
+                    "val_len": args.val_len,
                     "augment": args.aug,
                     "val_num_samples": len(val_loader.dataset),
                     "fold_metrics": []
@@ -147,10 +147,10 @@ def main(args):
             global_resume = {"current_fold": 0, "current_epoch": 1}
 
         # 记录实验结果matrix
-        save_path = os.path.join(matrix_dir, f"{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_{args.val_dataset}_scene{args.scene[1]}_{args.seed}_{args.aug}_{args.val_len * val_fs}.json")
+        save_path = os.path.join(matrix_dir, f"{args.model_name}_{args.train_dataset}_scene{args.scene[0]}_{args.val_dataset}_scene{args.scene[1]}_{args.seed}_{args.aug}_{args.val_len}.json")
 
 
-        all_folds = prepare_split_data(dataset_name=args.train_dataset, dataset_root= args.dataset_root, train_len=args.train_len, seed=args.seed, scene=args.scene[0], tag='intra')
+        all_folds = prepare_split_data(dataset_name=args.train_dataset, dataset_root= args.dataset_root, frame_len=args.train_len, seed=args.seed, scene=args.scene[0], tag='intra')
         fold_metrics = []  # Store metrics for each fold
         for fold_idx, (train_list, val_list) in enumerate(all_folds):
             if fold_idx < global_resume["current_fold"]:
@@ -287,7 +287,7 @@ def main(args):
             else:
                 weight_path = model_weight_path + '_last.pth'
 
-            create_model = select_model(args.model_name, args.val_len * val_fs)
+            create_model = select_model(args.model_name, args.val_len)
             model = create_model.to(device)
             model.load_state_dict(torch.load(weight_path, map_location=device))
 
@@ -325,7 +325,7 @@ def main(args):
                     "train_scene":args.scene[0],
                     "val_dataset": args.val_dataset,
                     "val_scene": args.scene[1],
-                    "val_len": args.val_len * val_fs,
+                    "val_len": args.val_len,
                     "augment": args.aug,
                     "val_num_samples": len(val_loader.dataset),
                     "fold_metrics": []
@@ -366,7 +366,7 @@ def parse_args():
     parser.add_argument('--train_dataset', type=str, default='PURE')
     parser.add_argument('--val_dataset', type=str, default='PURE')
     parser.add_argument('--train_len', type=int, default=160)
-    parser.add_argument('--val_len', type=int, default=10)
+    parser.add_argument('--val_len', type=int, default=160)
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--batch_size', type=int, default=4)
     parser.add_argument('--scene', nargs='+', type=str, default=['Raw', 'Raw'])

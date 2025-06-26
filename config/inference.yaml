@@ -3,7 +3,7 @@ experiment: inference
 train_dataset: UBFCrPPG       # Name of the training dataset
 val_dataset: UBFCrPPG         # Name of the validation dataset
 train_len: 160                # Length of training data (in frames)
-val_len: 10                   # Length of validation data (in seconds)
+val_len: 160                   # Length of validation data (in seconds)
 epochs: 1                    # Number of training epochs
 batch_size: 1                 # Batch size
 scene: ['Raw', 'Raw']         # Different scenes in dataset, [0] for training, [1] for validation

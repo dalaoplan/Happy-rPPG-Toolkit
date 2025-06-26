@@ -9,7 +9,7 @@ from torch import LongTensor, Tensor
 import math
 from timm.layers import DropPath
 
-from base.rrsda import video_regional_routing_attention_torch
+from models.base.rrsda import video_regional_routing_attention_torch
 
 class CDC_T(nn.Module):
     """
