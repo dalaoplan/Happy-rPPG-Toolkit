@@ -4,8 +4,8 @@ from utils import get_dataset_info
 
 if __name__ == '__main__':
 
-    scen = {'Raw'} # {'R', 'E', 'FIFP', 'VIFP', 'FIVP', 'VIVP'}
-    model_name = {'ICA', 'LGI', 'CHROME', 'GREEN', 'PBV', 'POS'}      #'ICA', 'LGI', 'CHROME', 'GREEN', 'PBV', 'POS'
+    scen = {'R', 'E', 'FIFP', 'VIFP', 'FIVP', 'VIVP'} # {'R', 'E', 'FIFP', 'VIFP', 'FIVP', 'VIVP'}
+    model_name = {'ICA', 'CHROME', 'POS'}      #'ICA', 'LGI', 'CHROME', 'GREEN', 'PBV', 'POS'
     test_dataset = {'DLCN'}  #'DLCN', 'PURE', 'UBFCrPPG', 'COHFACE'
 
     for model in model_name:

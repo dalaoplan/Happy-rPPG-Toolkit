@@ -26,7 +26,7 @@ def test(args):
             os.makedirs(plot_path)
 
 
-    test_len = args.test_len * args.fps
+    test_len = args.test_len
     test_path = read_split_data(args.test_dataset, args.scene)
 
     dataset = MyDataset(data_list=test_path,
@@ -141,7 +141,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--test-dataset', type=str, default='UBFCPhys', help='test dataset name')
     parser.add_argument('--scene', type=str, default='Raw', help='test scene, R: Relax, E: Exercise, FIFP, VIFP, FIVP, VIVP')
-    parser.add_argument('--test-len', type=int, default=10, help='test length, 10 second')
+    parser.add_argument('--test-len', type=int, default=160, help='test length')
     parser.add_argument('--fps', type=int, default=30)
     parser.add_argument('--nw', type=int, default=0, help='num_workers')
     parser.add_argument('--hr_method', type=str, default='FFT', help='=calculate hr use FFT or Peak')
