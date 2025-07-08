@@ -14,7 +14,7 @@ The excellent [rPPG-Toolbox](https://github.com/ubicomplab/rPPG-Toolbox) provide
 
 | Dataset      | Description                                                                                                                                   | Paper Link                                                                                     |
 |--------------|-----------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|
-| **DLCN**      | A challenging dataset collected under dynamic lighting conditions at night. It includes 784 videos from 98 subjects in 4 lighting scenarios, covering both rest and exercise states. | [Link]()                                                       |
+| **DLCN**      | A challenging dataset collected under dynamic lighting conditions at night. It includes 784 videos from 98 subjects in 4 lighting scenarios, covering both rest and exercise states. | [Link](https://arxiv.org/abs/2507.04306)                                                       |
 | **UBFC-rPPG** | A commonly used and relatively simple dataset. Collected in stable, well-lit indoor conditions. Subjects remain mostly still, and heart rate distribution is wide. | [Link](https://www.sciencedirect.com/science/article/abs/pii/S0167865517303860)                                                |
 | **PURE**      | Small datasets of different head movements of subjects were collected under controlled illumination. | [Link](https://ieeexplore.ieee.org/abstract/document/6926392)                                                     |
 | **COHFACE**   | Collected indoors under quiet good and poor lighting conditions, its compressed format storage has an effect on the extraction of rPPG signals. | [Link](https://arxiv.org/abs/1709.00962)                                              |                                           |
@@ -102,5 +102,13 @@ This work is primarily based on [rPPG-Toolbox](https://github.com/ubicomplab/rPP
 ##  📚 Citation
 If you use this toolkit or the DLCN dataset, please cite:
 ````
-TODO
+@misc{li2025exploringremotephysiologicalsignal,
+      title={Exploring Remote Physiological Signal Measurement under Dynamic Lighting Conditions at Night: Dataset, Experiment, and Analysis}, 
+      author={Zhipeng Li and Kegang Wang and Hanguang Xiao and Xingyue Liu and Feizhong Zhou and Jiaxin Jiang and Tianqi Liu},
+      year={2025},
+      eprint={2507.04306},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2507.04306}, 
+}
 ````
